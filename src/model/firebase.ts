@@ -10,7 +10,14 @@ const config = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-export const app = initializeApp(config);
-export const auth = getAuth(app);
+const requiredConfig = ["apiKey", "authDomain", "projectId", "appId"] as const;
+
+/** Explains why Firebase is unavailable without throwing during initial render. */
+export const firebaseConfigurationError = requiredConfig.some((key) => !config[key])
+  ? "Firebase is not configured. Copy .env.example to .env and add your Firebase web-app values."
+  : null;
+
+export const app = firebaseConfigurationError ? null : initializeApp(config);
+export const auth = app ? getAuth(app) : null;
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope("https://www.googleapis.com/auth/spreadsheets");

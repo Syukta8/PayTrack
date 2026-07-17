@@ -12,7 +12,7 @@ const currency = (value: number): string => `RM${value.toLocaleString(undefined,
 
 /** Root view; page state and mutations remain in ViewModels and the Tracker model. */
 export default function App() {
-  const { user, loading: authLoading, sheetsAccessToken, signIn, signOut } = useAuth();
+  const { user, loading: authLoading, sheetsAccessToken, configurationError, signIn, signOut } = useAuth();
   const vm = useTrackerViewModel(sheetsAccessToken);
   const [page, setPage] = useState<Page>("dashboard");
   const [sheetLink, setSheetLink] = useState("");
@@ -23,6 +23,7 @@ export default function App() {
   async function run(action: () => Promise<void>) { setActionError(null); try { await action(); await vm.reload(); } catch (reason) { setActionError(reason instanceof Error ? reason.message : "Action failed."); } }
 
   if (authLoading) return <main>Loading…</main>;
+  if (configurationError) return <main className="auth"><h1>Configure Firebase first</h1><p>{configurationError}</p><ol><li>Create <code>.env</code> from <code>.env.example</code>.</li><li>In Firebase Console, create a Web App and copy its configuration values.</li><li>Enable Authentication → Google sign-in.</li><li>Restart <code>npm run dev</code>.</li></ol></main>;
   if (!user) return <main className="auth"><h1>PayTrack</h1><p>Your private Google Sheet is your database.</p><button onClick={() => void signIn()}>Sign in with Google</button></main>;
   if (!sheetsAccessToken) return <main className="auth"><h1>Sheets access needed</h1><p>Sign in again and approve Google Sheets access to connect your private workbook.</p><button onClick={() => void signIn()}>Grant Sheets access</button><button className="secondary" onClick={() => void signOut()}>Sign out</button></main>;
   if (!vm.spreadsheetId) return <main className="auth"><h1>Connect your private Sheet</h1><p>Create a blank Google Sheet owned by {user.email}, paste its link below, then initialize its PayTrack tabs.</p><form onSubmit={connect}><input aria-label="Google Sheets link" value={sheetLink} onChange={(event) => setSheetLink(event.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." required /><button disabled={initializing}>{initializing ? "Initializing…" : "Connect and initialize"}</button></form>{actionError && <p className="error">{actionError}</p>}</main>;

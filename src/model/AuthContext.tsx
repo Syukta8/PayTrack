@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { auth, googleProvider } from "./firebase";
+import { auth, firebaseConfigurationError, googleProvider } from "./firebase";
 
 const TOKEN_KEY = "paytrack.sheetsAccessToken";
 
@@ -10,6 +10,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   sheetsAccessToken: string | null;
+  configurationError: string | null;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -22,13 +23,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [sheetsAccessToken, setSheetsAccessToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY));
 
-  useEffect(() => onAuthStateChanged(auth, (nextUser) => { setUser(nextUser); setLoading(false); }), []);
+  useEffect(() => {
+    if (!auth) { setLoading(false); return; }
+    return onAuthStateChanged(auth, (nextUser) => { setUser(nextUser); setLoading(false); });
+  }, []);
 
   const value: AuthContextValue = {
     user,
     loading,
     sheetsAccessToken,
+    configurationError: firebaseConfigurationError,
     signIn: async () => {
+      if (!auth) throw new Error(firebaseConfigurationError ?? "Firebase is unavailable.");
       const result = await signInWithPopup(auth, googleProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (!credential?.accessToken) throw new Error("Google Sheets access was not granted. Please try signing in again.");
@@ -38,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut: async () => {
       sessionStorage.removeItem(TOKEN_KEY);
       setSheetsAccessToken(null);
-      await firebaseSignOut(auth);
+      if (auth) await firebaseSignOut(auth);
     },
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
