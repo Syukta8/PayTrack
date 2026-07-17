@@ -31,6 +31,7 @@ export class SheetsRepository {
     });
     if (!response.ok) {
       const body = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      if (response.status === 401) throw new Error("Google Sheets access has expired. Sign out, then sign in again to reauthorize.");
       throw new Error(body?.error?.message ?? `Google Sheets request failed (${response.status}).`);
     }
     return response.json() as Promise<T>;
@@ -80,14 +81,21 @@ export class SheetsRepository {
     });
   }
 
-  /** Creates missing tabs and writes the required header rows without exposing the workbook publicly. */
+  /** Creates missing tabs and validates existing headers without overwriting financial data. */
   public async initializeTemplate(): Promise<void> {
     const metadata = await this.request<{ sheets?: { properties?: { title?: string } }[] }>("?fields=sheets.properties.title");
     const existing = new Set((metadata.sheets ?? []).map((sheet) => sheet.properties?.title));
     const missing = Object.values(SHEETS).filter((sheet) => !existing.has(sheet.tab));
     if (missing.length) await this.request(":batchUpdate", { method: "POST", body: JSON.stringify({ requests: missing.map((sheet) => ({ addSheet: { properties: { title: sheet.tab } } })) }) });
-    await Promise.all(Object.values(SHEETS).map((sheet) => this.request(`/values/${encodeURIComponent(`${sheet.tab}!A1`)}?valueInputOption=RAW`, {
-      method: "PUT", body: JSON.stringify({ values: [sheet.columns.map(([name]) => String(name))] }),
-    })));
+    await Promise.all(Object.values(SHEETS).map(async (sheet) => {
+      const expected = sheet.columns.map(([name]) => String(name));
+      const result = await this.request<{ values?: string[][] }>(`/values/${encodeURIComponent(`${sheet.tab}!A1:Z1`)}`);
+      const actual = result.values?.[0] ?? [];
+      if (actual.length === 0) {
+        await this.request(`/values/${encodeURIComponent(`${sheet.tab}!A1`)}?valueInputOption=RAW`, { method: "PUT", body: JSON.stringify({ values: [expected] }) });
+      } else if (actual.slice(0, expected.length).join(",") !== expected.join(",")) {
+        throw new Error(`The ${sheet.tab} header does not match the PayTrack template. Create a new blank Sheet or correct row 1 before connecting.`);
+      }
+    }));
   }
 }
