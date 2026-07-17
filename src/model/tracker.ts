@@ -1,5 +1,5 @@
 import { billStatus, maintenanceStatus, periodKey } from "./domain";
-import type { SheetsRepository, RowRecord } from "./sheets";
+import type { SheetsStore, RowRecord } from "./sheets";
 import type { BillStatus, Budget, CarInfo, Category, DashboardSummary, MaintenanceItem, MaintenanceStatus, RecurringBill, ServiceRecord, Transaction, TransactionType } from "./types";
 
 const today = (): string => new Date().toISOString().slice(0, 10);
@@ -22,7 +22,7 @@ export interface TrackerData {
 
 /** Domain facade that keeps Views independent of Google Sheets row mechanics. */
 export class Tracker {
-  public constructor(private readonly sheets: SheetsRepository) {}
+  public constructor(private readonly sheets: SheetsStore) {}
 
   /** Loads every screen's read model in parallel. */
   public async load(): Promise<TrackerData> {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SheetsRepository, spreadsheetIdFrom } from "../model/sheets";
+import { DemoSheetsRepository } from "../model/demo";
 import { Tracker } from "../model/tracker";
 import type { TrackerData } from "../model/tracker";
 
@@ -7,11 +8,12 @@ const SHEET_KEY = "paytrack.spreadsheetId";
 
 /** Owns the connected spreadsheet and all tracker read-model refreshes. */
 export function useTrackerViewModel(accessToken: string | null) {
+  const isDemo = import.meta.env.VITE_DEMO_MODE === "true";
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(() => localStorage.getItem(SHEET_KEY));
   const [data, setData] = useState<TrackerData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const tracker = useMemo(() => accessToken && spreadsheetId ? new Tracker(new SheetsRepository(spreadsheetId, accessToken)) : null, [accessToken, spreadsheetId]);
+  const tracker = useMemo(() => isDemo ? new Tracker(new DemoSheetsRepository()) : accessToken && spreadsheetId ? new Tracker(new SheetsRepository(spreadsheetId, accessToken)) : null, [accessToken, isDemo, spreadsheetId]);
 
   const reload = useCallback(async () => {
     if (!tracker) return;
@@ -29,6 +31,6 @@ export function useTrackerViewModel(accessToken: string | null) {
     localStorage.setItem(SHEET_KEY, id); setSpreadsheetId(id);
   }, [accessToken]);
 
-  const disconnect = useCallback(() => { localStorage.removeItem(SHEET_KEY); setSpreadsheetId(null); setData(null); }, []);
-  return { tracker, data, loading, error, spreadsheetId, connect, disconnect, reload };
+  const disconnect = useCallback(() => { if (!isDemo) { localStorage.removeItem(SHEET_KEY); setSpreadsheetId(null); setData(null); } }, [isDemo]);
+  return { tracker, data, loading, error, spreadsheetId, connect, disconnect, reload, isDemo };
 }

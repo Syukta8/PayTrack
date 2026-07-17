@@ -4,6 +4,12 @@ import type { CellType, SheetEntity, SheetRecord } from "./sheetSchema";
 const API_ROOT = "https://sheets.googleapis.com/v4/spreadsheets";
 
 export interface RowRecord<T> { rowNumber: number; data: T; }
+export interface SheetsStore {
+  list<K extends SheetEntity>(entity: K): Promise<RowRecord<SheetRecord<K>>[]>;
+  append<K extends SheetEntity>(entity: K, data: SheetRecord<K>): Promise<void>;
+  update<K extends SheetEntity>(entity: K, rowNumber: number, data: SheetRecord<K>): Promise<void>;
+  delete(entity: SheetEntity, rowNumber: number): Promise<void>;
+}
 
 /** Extracts the spreadsheet identifier from a Google Sheets URL or accepts a raw identifier. */
 export function spreadsheetIdFrom(value: string): string {
@@ -21,7 +27,7 @@ function coerce(value: unknown, type: CellType): string | number | boolean {
 }
 
 /** Browser-only repository for the owner's private Google Sheet. */
-export class SheetsRepository {
+export class SheetsRepository implements SheetsStore {
   public constructor(private readonly spreadsheetId: string, private readonly accessToken: string) {}
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
