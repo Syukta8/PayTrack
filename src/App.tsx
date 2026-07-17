@@ -1,15 +1,17 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { motion } from "framer-motion";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useAuth } from "./model/AuthContext";
 import { useTrackerViewModel } from "./viewModels/useTrackerViewModel";
 import type { Recurrence, TransactionType } from "./model/types";
 import { PAYMENT_TYPES } from "./model/types";
 import { localDateKey, occurrencesInRange, periodKey } from "./model/domain";
 
-type Page = "dashboard" | "calendar" | "transactions" | "budgets" | "bills" | "maintenance" | "history";
+type Page = "dashboard" | "calendar" | "transactions" | "planning" | "maintenance" | "history";
 const today = (): string => new Date().toISOString().slice(0, 10);
 const currency = (value: number): string => `RM${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const PIE_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777"];
 
 /** Root view; page state and mutations remain in ViewModels and the Tracker model. */
 export default function App() {
@@ -30,23 +32,28 @@ export default function App() {
   if (!sheetsAccessToken && !vm.isDemo) return <main className="auth"><h1>Sheets access needed</h1><p>Sign in again and approve Google Sheets access to connect your private workbook.</p><button onClick={() => void signIn()}>Grant Sheets access</button><button className="secondary" onClick={() => void signOut()}>Sign out</button></main>;
   if (!vm.spreadsheetId && !vm.isDemo) return <main className="auth"><h1>Connect your private Sheet</h1><p>Create a blank Google Sheet owned by {user?.email}, paste its link below, then initialize its PayTrack tabs.</p><form onSubmit={connect}><input aria-label="Google Sheets link" value={sheetLink} onChange={(event) => setSheetLink(event.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." required /><button disabled={initializing}>{initializing ? "Initializing…" : "Connect and initialize"}</button></form>{actionError && <p className="error">{actionError}</p>}</main>;
 
-  return <motion.div className="shell" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}><aside><h1>Financial Tracker</h1>{(["dashboard", "calendar", "transactions", "budgets", "bills", "maintenance", "history"] as Page[]).map((item) => <button className={page === item ? "active" : ""} onClick={() => setPage(item)} key={item}>{item}</button>)}<small>{vm.isDemo ? "Local demo mode" : user?.email}</small>{!vm.isDemo && <><button className="secondary" onClick={vm.disconnect}>Disconnect sheet</button><button className="secondary" onClick={() => void signOut()}>Sign out</button></>}</aside><motion.main initial={{ y: 6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}>{vm.isDemo && <p className="demo">Demo mode: data is stored only in this browser. Set VITE_DEMO_MODE=false to use Firebase and Google Sheets.</p>}{actionError && <p className="error">{actionError}</p>}{(vm.loading || busy) && <p>{busy ? "Saving…" : "Loading…"}</p>}{vm.error && <p className="error">{vm.error}</p>}<fieldset disabled={busy}>{vm.data && <motion.div key={page} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}><TrackerPage page={page} data={vm.data} run={run} tracker={vm.tracker!} /></motion.div>}</fieldset></motion.main></motion.div>;
+  return <motion.div className="shell" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}><aside><h1>Financial Tracker</h1>{(["dashboard", "calendar", "transactions", "planning", "maintenance", "history"] as Page[]).map((item) => <button className={page === item ? "active" : ""} onClick={() => setPage(item)} key={item}>{item === "planning" ? "Planning" : item}</button>)}<small>{vm.isDemo ? "Local demo mode" : user?.email}</small>{!vm.isDemo && <><button className="secondary" onClick={vm.disconnect}>Disconnect sheet</button><button className="secondary" onClick={() => void signOut()}>Sign out</button></>}</aside><motion.main initial={{ y: 6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}>{vm.isDemo && <p className="demo">Demo mode: data is stored only in this browser. Set VITE_DEMO_MODE=false to use Firebase and Google Sheets.</p>}{actionError && <p className="error">{actionError}</p>}{(vm.loading || busy) && <p>{busy ? "Saving…" : "Loading…"}</p>}{vm.error && <p className="error">{vm.error}</p>}<fieldset disabled={busy}>{vm.data && <motion.div key={page} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}><TrackerPage page={page} data={vm.data} run={run} tracker={vm.tracker!} /></motion.div>}</fieldset></motion.main></motion.div>;
 }
 
 function TrackerPage({ page, data, run, tracker }: { page: Page; data: NonNullable<ReturnType<typeof useTrackerViewModel>["data"]>; run: (action: () => Promise<void>, confirmation?: string) => Promise<void>; tracker: NonNullable<ReturnType<typeof useTrackerViewModel>["tracker"]> }) {
   if (page === "dashboard") return <Dashboard data={data} run={run} tracker={tracker} />;
   if (page === "calendar") return <Calendar data={data} />;
   if (page === "transactions") return <Transactions data={data} run={run} tracker={tracker} />;
-  if (page === "budgets") return <Budgets data={data} run={run} tracker={tracker} />;
-  if (page === "bills") return <Bills data={data} run={run} tracker={tracker} />;
+  if (page === "planning") return <Planning data={data} run={run} tracker={tracker} />;
   if (page === "maintenance") return <Maintenance data={data} run={run} tracker={tracker} />;
   return <History data={data} run={run} tracker={tracker} />;
 }
 
-function Dashboard({ data, run, tracker }: Props) { return <><h2>Dashboard — {data.dashboard.month}</h2><div className="stats"><Stat label="Income" value={data.dashboard.totalIncome}/><Stat label="Expense" value={data.dashboard.totalExpense}/><Stat label="Net" value={data.dashboard.netAmount}/></div><h3>Budgets</h3>{data.dashboard.budgets.map((budget) => <p key={budget.category}>{budget.category}: {currency(budget.spent)} / {currency(budget.monthlyLimit)}</p>)}<h3>Bills needing attention</h3>{data.bills.filter((bill) => bill.status === "overdue" || bill.status === "due_soon").map((bill) => <p key={bill.bill.id}>{bill.bill.name} — {bill.status} <button onClick={() => void run(() => tracker.markBillPaid(bill.bill.id))}>Mark paid</button></p>)}</> }
+function Dashboard({ data, run, tracker }: Props) { const attention = data.bills.filter((bill) => bill.status === "overdue" || bill.status === "due_soon"); return <><h2>Dashboard — {data.dashboard.month}</h2><div className="stats"><Stat label="Income" value={data.dashboard.totalIncome}/><Stat label="Expense" value={data.dashboard.totalExpense}/><Stat label="Net" value={data.dashboard.netAmount}/></div><div className="dashboard-grid"><section className="panel"><h3>Spend by category</h3>{data.dashboard.spendByCategory.length ? <ResponsiveContainer width="100%" height={250}><PieChart><Pie data={data.dashboard.spendByCategory} dataKey="amount" nameKey="category" outerRadius={82} label>{data.dashboard.spendByCategory.map((_, index) => <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(value) => currency(Number(value))}/></PieChart></ResponsiveContainer> : <p className="empty">No expenses recorded this month.</p>}</section><section className="panel"><h3>Budget progress</h3>{data.dashboard.budgets.map((budget) => <div className="budget-row" key={budget.category}><div><span>{budget.category}</span><small>{currency(budget.spent)} / {currency(budget.monthlyLimit)}</small></div><div className="progress"><i style={{ width: `${Math.min(100, budget.monthlyLimit ? budget.spent / budget.monthlyLimit * 100 : 0)}%` }}/></div></div>)}</section></div><section className="panel"><h3>Bills needing attention</h3>{attention.length ? attention.map((bill) => <p key={bill.bill.id}>{bill.bill.name} — {bill.status} <button onClick={() => void run(() => tracker.markBillPaid(bill.bill.id))}>Mark paid</button></p>) : <p className="empty">Nothing due soon or overdue.</p>}</section></> }
 function Stat({ label, value }: { label: string; value: number }) { return <section><strong>{currency(value)}</strong><span>{label}</span></section>; }
 
 type Props = { data: NonNullable<ReturnType<typeof useTrackerViewModel>["data"]>; run: (action: () => Promise<void>, confirmation?: string) => Promise<void>; tracker: NonNullable<ReturnType<typeof useTrackerViewModel>["tracker"]> };
+
+function Planning(props: Props) {
+  const [section, setSection] = useState<"budgets" | "bills">("budgets");
+  const attention = props.data.bills.filter((bill) => bill.status === "overdue" || bill.status === "due_soon").length;
+  return <><h2>Planning</h2><div className="planning-tabs"><button className={section === "budgets" ? "selected" : ""} onClick={() => setSection("budgets")}>Budgets <span>{props.data.budgets.length}</span></button><button className={section === "bills" ? "selected" : ""} onClick={() => setSection("bills")}>Recurring bills {attention > 0 && <span className="badge">{attention}</span>}</button></div><motion.div key={section} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>{section === "budgets" ? <Budgets {...props} /> : <Bills {...props} />}</motion.div></>;
+}
 
 function Transactions({ data, run, tracker }: Props) {
   const [date, setDate] = useState(today()); const [type, setType] = useState<TransactionType>("expense"); const [category, setCategory] = useState(""); const [amount, setAmount] = useState(""); const [description, setDescription] = useState(""); const [paymentType, setPaymentType] = useState(""); const [remarks, setRemarks] = useState(""); const [newCategory, setNewCategory] = useState("");
