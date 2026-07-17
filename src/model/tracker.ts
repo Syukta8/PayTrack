@@ -55,8 +55,8 @@ export class Tracker {
   public async setMileage(currentMileage: number): Promise<void> { const row = (await this.sheets.list("carInfo"))[0]; const data: CarInfo = { id: row?.data.id || id(), currentMileage, updatedAt: new Date().toISOString() }; if (row) await this.sheets.update("carInfo", row.rowNumber, data); else await this.sheets.append("carInfo", data); }
   /** Adds a maintenance item based on the current odometer baseline. */
   public async addMaintenance(input: Omit<MaintenanceItem, "id" | "active" | "lastServiceMileage">): Promise<void> { const car = (await this.sheets.list("carInfo"))[0]?.data.currentMileage ?? 0; await this.sheets.append("maintenance", { ...input, id: id(), active: true, lastServiceMileage: car }); }
-  /** Moves the maintenance item's rolling baseline to today. */
-  public async markMaintenanceDone(itemId: string): Promise<void> { const row = await this.rowById("maintenance", itemId); const car = (await this.sheets.list("carInfo"))[0]?.data.currentMileage ?? 0; await this.sheets.update("maintenance", row.rowNumber, { ...row.data, lastServiceDate: today(), lastServiceMileage: car }); }
+  /** Moves the maintenance baseline and optionally logs its cost as an expense. */
+  public async markMaintenanceDone(itemId: string, input?: { date?: string; mileage?: number; cost?: number; category?: string }): Promise<void> { const row = await this.rowById("maintenance", itemId); const car = (await this.sheets.list("carInfo"))[0]?.data.currentMileage ?? 0; const date = input?.date || today(); const mileage = input?.mileage ?? car; await this.sheets.update("maintenance", row.rowNumber, { ...row.data, lastServiceDate: date, lastServiceMileage: mileage }); if (input?.cost && input.cost > 0) await this.addTransaction({ date, type: "expense", category: input.category || "Car Maintenance", amount: input.cost, description: `Maintenance: ${row.data.name}`, paymentType: "", remarks: "" }); }
   /** Deletes a maintenance item. */
   public async deleteMaintenance(itemId: string): Promise<void> { await this.deleteById("maintenance", itemId); }
   /** Adds a historical car-service record. */
