@@ -1,93 +1,334 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { motion } from "framer-motion";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useAuth } from "./model/AuthContext";
 import { useTrackerViewModel } from "./viewModels/useTrackerViewModel";
-import type { Recurrence, TransactionType } from "./model/types";
-import { PAYMENT_TYPES } from "./model/types";
-import { localDateKey, occurrencesInRange, periodKey } from "./model/domain";
 
-type Page = "dashboard" | "calendar" | "transactions" | "planning" | "maintenance" | "history";
-const today = (): string => new Date().toISOString().slice(0, 10);
-const currency = (value: number): string => `RM${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const PIE_COLORS = ["#2563eb", "#16a34a", "#d97706", "#dc2626", "#7c3aed", "#0891b2", "#db2777"];
+import { BottomNav } from "./components/BottomNav";
+import type { NavTab } from "./components/BottomNav";
+import { QuickActionsModal } from "./components/QuickActionsModal";
+import { AddExpenseModal } from "./components/AddExpenseModal";
+import { GoalsAndMoneyView, BNPLModal } from "./components/GoalsAndMoneyView";
 
-/** Root view; page state and mutations remain in ViewModels and the Tracker model. */
+const currency = (value: number): string =>
+  `RM${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 export default function App() {
   const { user, loading: authLoading, sheetsAccessToken, configurationError, signIn, signOut } = useAuth();
   const vm = useTrackerViewModel(sheetsAccessToken);
-  const [page, setPage] = useState<Page>("dashboard");
+
+  // Navigation and Modal UI State
+  const [activeTab, setActiveTab] = useState<NavTab>("home");
+  const [accountType, setAccountType] = useState<"Personal" | "Business">("Personal");
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [isBNPLOpen, setIsBNPLOpen] = useState(false);
+
+  // Existing auth form state
   const [sheetLink, setSheetLink] = useState("");
   const [initializing, setInitializing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
-  async function connect(event: FormEvent) { event.preventDefault(); setInitializing(true); setActionError(null); try { await vm.connect(sheetLink, true); } catch (reason) { setActionError(reason instanceof Error ? reason.message : "Unable to connect sheet."); } finally { setInitializing(false); } }
-  async function run(action: () => Promise<void>, confirmation?: string) { if (confirmation && !window.confirm(confirmation)) return; setBusy(true); setActionError(null); try { await action(); await vm.reload(); } catch (reason) { setActionError(reason instanceof Error ? reason.message : "Action failed."); } finally { setBusy(false); } }
+  async function connect(event: FormEvent) {
+    event.preventDefault();
+    setInitializing(true);
+    setActionError(null);
+    try {
+      await vm.connect(sheetLink, true);
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : "Unable to connect sheet.");
+    } finally {
+      setInitializing(false);
+    }
+  }
 
-  if (authLoading) return <main>Loading…</main>;
-  if (configurationError && !vm.isDemo) return <main className="auth"><h1>Configure Firebase first</h1><p>{configurationError}</p><ol><li>Create <code>.env</code> from <code>.env.example</code>.</li><li>In Firebase Console, create a Web App and copy its configuration values.</li><li>Enable Authentication → Google sign-in.</li><li>Restart <code>npm run dev</code>.</li></ol></main>;
-  if (!user && !vm.isDemo) return <main className="auth"><h1>PayTrack</h1><p>Your private Google Sheet is your database.</p><button onClick={() => void signIn()}>Sign in with Google</button></main>;
-  if (!sheetsAccessToken && !vm.isDemo) return <main className="auth"><h1>Sheets access needed</h1><p>Sign in again and approve Google Sheets access to connect your private workbook.</p><button onClick={() => void signIn()}>Grant Sheets access</button><button className="secondary" onClick={() => void signOut()}>Sign out</button></main>;
-  if (!vm.spreadsheetId && !vm.isDemo) return <main className="auth"><h1>Connect your private Sheet</h1><p>Create a blank Google Sheet owned by {user?.email}, paste its link below, then initialize its PayTrack tabs.</p><form onSubmit={connect}><input aria-label="Google Sheets link" value={sheetLink} onChange={(event) => setSheetLink(event.target.value)} placeholder="https://docs.google.com/spreadsheets/d/..." required /><button disabled={initializing}>{initializing ? "Initializing…" : "Connect and initialize"}</button></form>{actionError && <p className="error">{actionError}</p>}</main>;
+  async function run(action: () => Promise<void>, confirmation?: string) {
+    if (confirmation && !window.confirm(confirmation)) return;
+    setActionError(null);
+    try {
+      await action();
+      await vm.reload();
+    } catch (reason) {
+      setActionError(reason instanceof Error ? reason.message : "Action failed.");
+    }
+  }
 
-  return <motion.div className="shell" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}><aside><h1>Financial Tracker</h1>{(["dashboard", "calendar", "transactions", "planning", "maintenance", "history"] as Page[]).map((item) => <button className={page === item ? "active" : ""} onClick={() => setPage(item)} key={item}>{item === "planning" ? "Planning" : item}</button>)}<small>{vm.isDemo ? "Local demo mode" : user?.email}</small>{!vm.isDemo && <><button className="secondary" onClick={vm.disconnect}>Disconnect sheet</button><button className="secondary" onClick={() => void signOut()}>Sign out</button></>}</aside><motion.main initial={{ y: 6, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.2 }}>{vm.isDemo && <p className="demo">Demo mode: data is stored only in this browser. Set VITE_DEMO_MODE=false to use Firebase and Google Sheets.</p>}{actionError && <p className="error">{actionError}</p>}{(vm.loading || busy) && <p>{busy ? "Saving…" : "Loading…"}</p>}{vm.error && <p className="error">{vm.error}</p>}<fieldset disabled={busy}>{vm.data && <motion.div key={page} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}><TrackerPage page={page} data={vm.data} run={run} tracker={vm.tracker!} /></motion.div>}</fieldset></motion.main></motion.div>;
-}
+  if (authLoading) return <main style={{ padding: 20 }}>Loading…</main>;
 
-function TrackerPage({ page, data, run, tracker }: { page: Page; data: NonNullable<ReturnType<typeof useTrackerViewModel>["data"]>; run: (action: () => Promise<void>, confirmation?: string) => Promise<void>; tracker: NonNullable<ReturnType<typeof useTrackerViewModel>["tracker"]> }) {
-  if (page === "dashboard") return <Dashboard data={data} run={run} tracker={tracker} />;
-  if (page === "calendar") return <Calendar data={data} />;
-  if (page === "transactions") return <Transactions data={data} run={run} tracker={tracker} />;
-  if (page === "planning") return <Planning data={data} run={run} tracker={tracker} />;
-  if (page === "maintenance") return <Maintenance data={data} run={run} tracker={tracker} />;
-  return <History data={data} run={run} tracker={tracker} />;
-}
+  if (configurationError && !vm.isDemo) {
+    return (
+      <main className="auth">
+        <h1>Configure Firebase first</h1>
+        <p>{configurationError}</p>
+      </main>
+    );
+  }
 
-function Dashboard({ data, run, tracker }: Props) { const attention = data.bills.filter((bill) => bill.status === "overdue" || bill.status === "due_soon"); return <><h2>Dashboard — {data.dashboard.month}</h2><div className="stats"><Stat label="Income" value={data.dashboard.totalIncome}/><Stat label="Expense" value={data.dashboard.totalExpense}/><Stat label="Net" value={data.dashboard.netAmount}/></div><div className="dashboard-grid"><section className="panel"><h3>Spend by category</h3>{data.dashboard.spendByCategory.length ? <ResponsiveContainer width="100%" height={250}><PieChart><Pie data={data.dashboard.spendByCategory} dataKey="amount" nameKey="category" outerRadius={82} label>{data.dashboard.spendByCategory.map((_, index) => <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}</Pie><Tooltip formatter={(value) => currency(Number(value))}/></PieChart></ResponsiveContainer> : <p className="empty">No expenses recorded this month.</p>}</section><section className="panel"><h3>Budget progress</h3>{data.dashboard.budgets.map((budget) => <div className="budget-row" key={budget.category}><div><span>{budget.category}</span><small>{currency(budget.spent)} / {currency(budget.monthlyLimit)}</small></div><div className="progress"><i style={{ width: `${Math.min(100, budget.monthlyLimit ? budget.spent / budget.monthlyLimit * 100 : 0)}%` }}/></div></div>)}</section></div><section className="panel"><h3>Bills needing attention</h3>{attention.length ? attention.map((bill) => <p key={bill.bill.id}>{bill.bill.name} — {bill.status} <button onClick={() => void run(() => tracker.markBillPaid(bill.bill.id))}>Mark paid</button></p>) : <p className="empty">Nothing due soon or overdue.</p>}</section></> }
-function Stat({ label, value }: { label: string; value: number }) { return <section><strong>{currency(value)}</strong><span>{label}</span></section>; }
+  if (!user && !vm.isDemo) {
+    return (
+      <main className="auth">
+        <h1>PayTrack</h1>
+        <p>Your private Google Sheet is your database.</p>
+        <button onClick={() => void signIn()}>Sign in with Google</button>
+      </main>
+    );
+  }
 
-type Props = { data: NonNullable<ReturnType<typeof useTrackerViewModel>["data"]>; run: (action: () => Promise<void>, confirmation?: string) => Promise<void>; tracker: NonNullable<ReturnType<typeof useTrackerViewModel>["tracker"]> };
+  if (!sheetsAccessToken && !vm.isDemo) {
+    return (
+      <main className="auth">
+        <h1>Sheets access needed</h1>
+        <p>Sign in again and approve Google Sheets access to connect your private workbook.</p>
+        <button onClick={() => void signIn()}>Grant Sheets access</button>
+        <button className="secondary" onClick={() => void signOut()}>Sign out</button>
+      </main>
+    );
+  }
 
-function Planning(props: Props) {
-  const [section, setSection] = useState<"budgets" | "bills">("budgets");
-  const attention = props.data.bills.filter((bill) => bill.status === "overdue" || bill.status === "due_soon").length;
-  return <><h2>Planning</h2><div className="planning-tabs"><button className={section === "budgets" ? "selected" : ""} onClick={() => setSection("budgets")}>Budgets <span>{props.data.budgets.length}</span></button><button className={section === "bills" ? "selected" : ""} onClick={() => setSection("bills")}>Recurring bills {attention > 0 && <span className="badge">{attention}</span>}</button></div><motion.div key={section} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.16 }}>{section === "budgets" ? <Budgets {...props} /> : <Bills {...props} />}</motion.div></>;
-}
+  if (!vm.spreadsheetId && !vm.isDemo) {
+    return (
+      <main className="auth">
+        <h1>Connect your private Sheet</h1>
+        <p>Create a blank Google Sheet owned by {user?.email}, paste its link below, then initialize its PayTrack tabs.</p>
+        <form onSubmit={connect}>
+          <input
+            aria-label="Google Sheets link"
+            value={sheetLink}
+            onChange={(event) => setSheetLink(event.target.value)}
+            placeholder="https://docs.google.com/spreadsheets/d/..."
+            required
+          />
+          <button disabled={initializing}>{initializing ? "Initializing…" : "Connect and initialize"}</button>
+        </form>
+        {actionError && <p className="error">{actionError}</p>}
+      </main>
+    );
+  }
 
-function Transactions({ data, run, tracker }: Props) {
-  const [date, setDate] = useState(today()); const [type, setType] = useState<TransactionType>("expense"); const [category, setCategory] = useState(""); const [amount, setAmount] = useState(""); const [description, setDescription] = useState(""); const [paymentType, setPaymentType] = useState(""); const [remarks, setRemarks] = useState(""); const [newCategory, setNewCategory] = useState("");
-  return <><h2>Transactions</h2><form onSubmit={(event) => { event.preventDefault(); void run(() => tracker.addTransaction({ date, type, category, amount: Number(amount), description, paymentType, remarks })); setAmount(""); setDescription(""); setRemarks(""); }}><input type="date" value={date} onChange={(event) => setDate(event.target.value)} required/><select value={type} onChange={(event) => setType(event.target.value as TransactionType)}><option value="expense">Expense</option><option value="income">Income</option></select><select value={category} onChange={(event) => setCategory(event.target.value)} required><option value="">Category</option>{data.categories.filter((item) => item.type === type).map((item) => <option key={item.id}>{item.name}</option>)}</select><input type="number" min="0" step="0.01" placeholder="Amount" value={amount} onChange={(event) => setAmount(event.target.value)} required/><input placeholder="Description" value={description} onChange={(event) => setDescription(event.target.value)}/><select value={paymentType} onChange={(event) => setPaymentType(event.target.value)}><option value="">Payment type</option>{PAYMENT_TYPES.map((item) => <option key={item}>{item}</option>)}</select><input placeholder="Remarks" value={remarks} onChange={(event) => setRemarks(event.target.value)}/><button>Add</button></form><form onSubmit={(event) => { event.preventDefault(); void run(() => tracker.addCategory(newCategory, type)); setNewCategory(""); }}><input placeholder="New category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)} required/><button>Add {type} category</button></form>{data.transactions.map((item) => <p key={item.id}>{item.date} · {item.category} · {currency(item.amount)} {item.paymentType && ` · ${item.paymentType}`} {item.remarks && ` · ${item.remarks}`} <button onClick={() => void run(() => tracker.deleteTransaction(item.id), "Delete this transaction permanently?")}>Delete</button></p>)}</>;
-}
+  const data = vm.data;
+  const netSavings = data ? data.dashboard.netAmount : 0;
+  const totalIncome = data ? data.dashboard.totalIncome : 0;
+  const totalExpense = data ? data.dashboard.totalExpense : 0;
+  const transactionCount = data ? data.transactions.length : 0;
+  const savingsRate = totalIncome > 0 ? Math.max(0, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)) : 0;
 
-function Budgets({ data, run, tracker }: Props) {
-  const [category, setCategory] = useState(""); const [limit, setLimit] = useState("");
-  return <><h2>Budgets</h2><form onSubmit={(event) => { event.preventDefault(); void run(() => tracker.setBudget(category, Number(limit))); setLimit(""); }}><select value={category} onChange={(event) => setCategory(event.target.value)} required><option value="">Expense category</option>{data.categories.filter((item) => item.type === "expense").map((item) => <option key={item.id}>{item.name}</option>)}</select><input type="number" min="0" step="0.01" value={limit} onChange={(event) => setLimit(event.target.value)} placeholder="Monthly limit" required/><button>Save budget</button></form>{data.budgets.map((item) => <p key={item.id}>{item.category}: {currency(item.monthlyLimit)} <button onClick={() => void run(() => tracker.deleteBudget(item.id), "Delete this budget permanently?")}>Delete</button></p>)}</>;
-}
+  const handleAddTransactionSubmit = async (formData: {
+    type: "expense" | "income";
+    amount: number;
+    category: string;
+    paymentMethod: string;
+    date: string;
+    note: string;
+  }) => {
+    if (!vm.tracker) return;
+    await run(async () => {
+      await vm.tracker?.addTransaction({
+        date: formData.date,
+        type: formData.type,
+        amount: formData.amount,
+        category: formData.category,
+        paymentType: formData.paymentMethod,
+        description: formData.note,
+        remarks: "",
+      });
+    });
+  };
 
-function Bills({ data, run, tracker }: Props) {
-  const [name, setName] = useState(""); const [amount, setAmount] = useState(""); const [category, setCategory] = useState(""); const [dueDay, setDueDay] = useState("1"); const [recurrence, setRecurrence] = useState<Recurrence>("monthly");
-  const dueLabel = recurrence === "monthly" ? "Day of month" : recurrence === "weekly" ? "Day of week (1=Mon)" : "Day of year";
-  return <><h2>Recurring bills</h2><form onSubmit={(event) => { event.preventDefault(); void run(() => tracker.addBill({ name, amount: Number(amount), category, dueDay: Number(dueDay), recurrence })); setName(""); setAmount(""); }}><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Bill name" required/><input type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Amount" required/><select value={category} onChange={(event) => setCategory(event.target.value)} required><option value="">Expense category</option>{data.categories.filter((item) => item.type === "expense").map((item) => <option key={item.id}>{item.name}</option>)}</select><select value={recurrence} onChange={(event) => setRecurrence(event.target.value as Recurrence)}><option value="monthly">Monthly</option><option value="weekly">Weekly</option><option value="yearly">Yearly</option></select><label>{dueLabel}<input type="number" min="1" max={recurrence === "weekly" ? 7 : recurrence === "yearly" ? 366 : 31} value={dueDay} onChange={(event) => setDueDay(event.target.value)} required/></label><button>Add bill</button></form>{data.bills.map((item) => <p key={item.bill.id}>{item.bill.name} · {currency(item.bill.amount)} · {item.bill.recurrence} · {item.status} {!item.isPaidForCurrentPeriod && <button onClick={() => void run(() => tracker.markBillPaid(item.bill.id))}>Mark paid</button>} <button onClick={() => void run(() => tracker.deleteBill(item.bill.id), "Delete this recurring bill permanently?")}>Delete</button></p>)}</>;
-}
+  return (
+    <div className="app-viewport">
+      <div className="app-container">
+        {/* Top Navigation Bar Header */}
+        <header className="app-header">
+          <div className="user-greeting">
+            <span className="greeting-label">Good morning</span>
+            <span className="user-name">{user?.displayName || user?.email?.split("@")[0] || "MUHAMMAD"}</span>
+          </div>
 
-function Maintenance({ data, run, tracker }: Props) {
-  const [mileage, setMileage] = useState(String(data.carInfo.currentMileage || "")); const [name, setName] = useState(""); const [notes, setNotes] = useState(""); const [months, setMonths] = useState(""); const [km, setKm] = useState(""); const [lastServiceDate, setLastServiceDate] = useState(today()); const [cost, setCost] = useState(""); const [costCategory, setCostCategory] = useState("");
-  return <><h2>Car maintenance</h2><form onSubmit={(event) => { event.preventDefault(); void run(() => tracker.setMileage(Number(mileage))); }}><input type="number" min="0" value={mileage} onChange={(event) => setMileage(event.target.value)} placeholder="Current km" required/><button>Update mileage</button></form><form onSubmit={(event) => { event.preventDefault(); void run(() => tracker.addMaintenance({ name, notes, intervalMonths: Number(months) || 0, intervalKm: Number(km) || 0, lastServiceDate })); setName(""); setNotes(""); }}><input value={name} onChange={(event) => setName(event.target.value)} placeholder="Maintenance item" required/><input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notes"/><input type="number" min="0" value={months} onChange={(event) => setMonths(event.target.value)} placeholder="Months"/><input type="number" min="0" value={km} onChange={(event) => setKm(event.target.value)} placeholder="Kilometres"/><input type="date" value={lastServiceDate} onChange={(event) => setLastServiceDate(event.target.value)} required/><button>Add item</button></form><div className="inline-fields"><input type="number" min="0" step="0.01" value={cost} onChange={(event) => setCost(event.target.value)} placeholder="Completion cost (optional)"/><select value={costCategory} onChange={(event) => setCostCategory(event.target.value)}><option value="">Car Maintenance category</option>{data.categories.filter((item) => item.type === "expense").map((item) => <option key={item.id}>{item.name}</option>)}</select></div>{data.maintenance.map((item) => <p key={item.item.id}>{item.item.name} · {item.status} · {item.item.notes} <button onClick={() => void run(() => tracker.markMaintenanceDone(item.item.id, { cost: Number(cost) || undefined, category: costCategory || undefined }))}>Mark done</button> <button onClick={() => void run(() => tracker.deleteMaintenance(item.item.id), "Delete this maintenance item permanently?")}>Delete</button></p>)}</>;
-}
+          <div className="header-right">
+            <div className="segmented-pill">
+              <button
+                className={`pill-btn ${accountType === "Personal" ? "active" : ""}`}
+                onClick={() => setAccountType("Personal")}
+              >
+                Personal
+              </button>
+              <button
+                className={`pill-btn ${accountType === "Business" ? "active" : ""}`}
+                onClick={() => setAccountType("Business")}
+              >
+                Business
+              </button>
+            </div>
 
-function Calendar({ data }: { data: Props["data"] }) {
-  const initial = new Date(); const [year, setYear] = useState(initial.getFullYear()); const [month, setMonth] = useState(initial.getMonth());
-  const first = new Date(year, month, 1); const start = new Date(year, month, 1 - ((first.getDay() + 6) % 7)); const last = new Date(year, month + 1, 0); const end = new Date(year, month + 1, last.getDate() + (6 - ((last.getDay() + 6) % 7)));
-  const events = new Map<string, { title: string; status: string }[]>(); const add = (date: string, title: string, status: string) => events.set(date, [...(events.get(date) ?? []), { title, status }]);
-  for (const status of data.bills) for (const date of occurrencesInRange(status.bill.dueDay, status.bill.recurrence, start, end)) { const iso = localDateKey(date); const paid = status.bill.lastPaidPeriod === periodKey(date, status.bill.recurrence); const days = Math.round((date.getTime() - Date.now()) / 86_400_000); add(iso, status.bill.name, paid ? "paid" : days < 0 ? "overdue" : days <= 5 ? "due soon" : "upcoming"); }
-  for (const status of data.maintenance) if (status.nextDueDate) add(status.nextDueDate, status.item.name, status.status.replace("_", " "));
-  const days: Date[] = []; for (let cursor = new Date(start); cursor <= end; cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 1)) days.push(cursor);
-  const move = (delta: number) => { const next = new Date(year, month + delta, 1); setYear(next.getFullYear()); setMonth(next.getMonth()); };
-  return <><h2>Calendar</h2><div className="calendar-nav"><button onClick={() => move(-1)}>← Prev</button><strong>{first.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</strong><button onClick={() => move(1)}>Next →</button></div><div className="calendar weekdays">{["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => <span key={day}>{day}</span>)}</div><div className="calendar">{days.map((day) => { const iso = localDateKey(day); return <div className={day.getMonth() === month ? "calendar-day" : "calendar-day muted"} key={iso}><strong>{day.getDate()}</strong>{(events.get(iso) ?? []).map((event, index) => <small className={`event ${event.status.replace(" ", "-")}`} key={`${event.title}-${index}`}>{event.title}</small>)}</div>; })}</div>{data.maintenance.filter((item) => item.item.intervalKm > 0 && item.item.intervalMonths === 0).length > 0 && <><h3>Mileage-only maintenance</h3>{data.maintenance.filter((item) => item.item.intervalKm > 0 && item.item.intervalMonths === 0).map((item) => <p key={item.item.id}>{item.item.name}: {item.kmUntilDue ?? 0} km remaining</p>)}</>}</>;
-}
+            <button className="icon-circle-btn" aria-label="Notifications">
+              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </button>
+          </div>
+        </header>
 
-function History({ data, run, tracker }: Props) {
-  const [date, setDate] = useState(today()); const [mileage, setMileage] = useState(""); const [description, setDescription] = useState("");
-  return <><h2>Service history</h2><form onSubmit={(event) => { event.preventDefault(); void run(() => tracker.addServiceRecord(date, Number(mileage), description)); setMileage(""); setDescription(""); }}><input type="date" value={date} onChange={(event) => setDate(event.target.value)} required/><input type="number" min="0" value={mileage} onChange={(event) => setMileage(event.target.value)} placeholder="Odometer" required/><input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Work done" required/><button>Add record</button></form>{data.serviceHistory.map((item) => <p key={item.id}>{item.date} · {item.mileage.toLocaleString()} km · {item.description} <button onClick={() => void run(() => tracker.deleteServiceRecord(item.id), "Delete this service record permanently?")}>Delete</button></p>)}</>;
+        {/* Tab Views */}
+        {activeTab === "home" && (
+          <main style={{ padding: 0 }}>
+            {/* Dark Net Savings Hero Card (Image 1) */}
+            <div className="dark-hero-card">
+              <div className="hero-eyebrow">JULY 2026 · NET SAVINGS</div>
+              <div className="hero-amount">
+                {netSavings >= 0 ? "+" : "−"}
+                {currency(Math.abs(netSavings))}
+              </div>
+
+              <div className="hero-divider" />
+
+              <div className="hero-stats-row">
+                <div className="stat-item">
+                  <div className="stat-label-dot">
+                    <span className="dot green" />
+                    <span>INCOME</span>
+                  </div>
+                  <span className="stat-value">{currency(totalIncome)}</span>
+                </div>
+
+                <div className="stat-item">
+                  <div className="stat-label-dot">
+                    <span className="dot red" />
+                    <span>EXPENSE</span>
+                  </div>
+                  <span className="stat-value">{currency(totalExpense)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2-Column Stat Cards */}
+            <div className="stats-two-grid">
+              <div className="white-stat-card">
+                <span className="eyebrow">TRANSACTIONS</span>
+                <span className="value">{transactionCount}</span>
+              </div>
+              <div className="white-stat-card">
+                <span className="eyebrow">SAVINGS RATE</span>
+                <span className="value">{savingsRate}%</span>
+              </div>
+            </div>
+
+            {/* Recent Section Card */}
+            <div className="section-card">
+              <div className="section-header">
+                <h3>Recent</h3>
+                <button className="see-all-btn" onClick={() => setActiveTab("log")}>
+                  See all
+                </button>
+              </div>
+
+              {data && data.transactions.length > 0 ? (
+                <div>
+                  {data.transactions.slice(0, 4).map((tx) => (
+                    <div className="entry-row" key={tx.id}>
+                      <div>
+                        <strong>{tx.description || tx.category}</strong>
+                        <small style={{ display: "block", color: "var(--text-light)", fontSize: "0.75rem" }}>
+                          {tx.category} · {tx.date}
+                        </small>
+                      </div>
+                      <b style={{ color: tx.type === "income" ? "var(--accent-green)" : "var(--text-main)" }}>
+                        {tx.type === "income" ? "+" : "−"}
+                        {currency(tx.amount)}
+                      </b>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-title">No transactions yet</div>
+                  <div className="empty-sub">Tap + to add your first one</div>
+                </div>
+              )}
+            </div>
+          </main>
+        )}
+
+        {activeTab === "log" && (
+          <main style={{ padding: "0 20px 20px" }}>
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 800, margin: "16px 0" }}>Transactions Log</h2>
+            <div className="section-card" style={{ margin: 0 }}>
+              {data && data.transactions.length > 0 ? (
+                data.transactions.map((tx) => (
+                  <div className="entry-row" key={tx.id}>
+                    <div>
+                      <strong>{tx.description || tx.category}</strong>
+                      <small style={{ display: "block", color: "var(--text-light)", fontSize: "0.75rem" }}>
+                        {tx.category} · {tx.paymentType || "Cash"} · {tx.date}
+                      </small>
+                    </div>
+                    <b style={{ color: tx.type === "income" ? "var(--accent-green)" : "var(--text-main)" }}>
+                      {tx.type === "income" ? "+" : "−"}
+                      {currency(tx.amount)}
+                    </b>
+                  </div>
+                ))
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-title">No logged transactions</div>
+                  <div className="empty-sub">Add transactions using the central + button</div>
+                </div>
+              )}
+            </div>
+          </main>
+        )}
+
+        {activeTab === "goals" && (
+          <GoalsAndMoneyView onOpenBNPLModal={() => setIsBNPLOpen(true)} />
+        )}
+
+        {activeTab === "more" && (
+          <main style={{ padding: "0 20px 20px" }}>
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 800, margin: "16px 0" }}>More Options</h2>
+            <div className="section-card" style={{ margin: 0 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                  Signed in as: <strong>{user?.email || "Demo User"}</strong>
+                </div>
+                {!vm.isDemo && (
+                  <button
+                    className="pill-btn active"
+                    style={{ padding: "10px 16px", textAlign: "center" }}
+                    onClick={() => void signOut()}
+                  >
+                    Sign Out
+                  </button>
+                )}
+              </div>
+            </div>
+          </main>
+        )}
+
+        {/* Floating Bottom Nav Bar */}
+        <BottomNav
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onFabClick={() => setIsQuickActionsOpen(true)}
+        />
+
+        {/* Modals & Bottom Drawers */}
+        <QuickActionsModal
+          isOpen={isQuickActionsOpen}
+          onClose={() => setIsQuickActionsOpen(false)}
+          onOpenAddTransaction={() => setIsAddExpenseOpen(true)}
+          onOpenSetBudget={() => alert("Set Budget modal option chosen")}
+          onOpenBNPLModal={() => setIsBNPLOpen(true)}
+        />
+
+        <AddExpenseModal
+          isOpen={isAddExpenseOpen}
+          onClose={() => setIsAddExpenseOpen(false)}
+          onSubmit={handleAddTransactionSubmit}
+        />
+
+        <BNPLModal
+          isOpen={isBNPLOpen}
+          onClose={() => setIsBNPLOpen(false)}
+        />
+      </div>
+    </div>
+  );
 }
