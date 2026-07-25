@@ -11,6 +11,7 @@ import { AddExpenseModal } from "./components/AddExpenseModal";
 import { QuickActionsModal } from "./components/QuickActionsModal";
 import { BillsView } from "./components/BillsView";
 import { MaintenanceView } from "./components/MaintenanceView";
+import { ScanReceiptModal } from "./components/ScanReceiptModal";
 import type { Transaction } from "./model/types";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -24,6 +25,14 @@ export default function App() {
   const [selectedReceipt, setSelectedReceipt] = useState<Transaction | null>(null);
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+  const [scannedData, setScannedData] = useState<{
+    amount?: number;
+    category?: string;
+    description?: string;
+    date?: string;
+    note?: string;
+  } | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     return (localStorage.getItem("paytrack.theme") as ThemeMode) || "system";
   });
@@ -322,17 +331,33 @@ export default function App() {
             <QuickActionsModal
               isOpen={isQuickActionsOpen}
               onClose={() => setIsQuickActionsOpen(false)}
-              onOpenAddTransaction={() => setIsAddModalOpen(true)}
-              onOpenScanReceipt={() => {
-                alert("Receipt scanning via camera/file upload feature requested!");
+              onOpenAddTransaction={() => {
+                setScannedData(null);
+                setIsAddModalOpen(true);
+              }}
+              onOpenScanReceipt={() => setIsScanModalOpen(true)}
+            />
+
+            {/* AI Receipt Scanner Modal */}
+            <ScanReceiptModal
+              isOpen={isScanModalOpen}
+              onClose={() => setIsScanModalOpen(false)}
+              onReceiptScanned={(parsed) => {
+                setScannedData(parsed);
+                setIsScanModalOpen(false);
+                setIsAddModalOpen(true);
               }}
             />
 
             {/* Add Expense Modal Drawer */}
             <AddExpenseModal
               isOpen={isAddModalOpen}
-              onClose={() => setIsAddModalOpen(false)}
+              onClose={() => {
+                setIsAddModalOpen(false);
+                setScannedData(null);
+              }}
               onSubmit={handleAddTransactionSubmit}
+              initialData={scannedData}
             />
           </>
         )}

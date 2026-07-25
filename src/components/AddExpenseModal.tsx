@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -11,6 +11,13 @@ interface AddExpenseModalProps {
     date: string;
     note: string;
   }) => void;
+  initialData?: {
+    amount?: number;
+    category?: string;
+    description?: string;
+    date?: string;
+    note?: string;
+  } | null;
 }
 
 const EXPENSE_CATEGORIES = [
@@ -37,6 +44,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  initialData,
 }) => {
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amountStr, setAmountStr] = useState("0.00");
@@ -44,6 +52,18 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [selectedPayment, setSelectedPayment] = useState("Cash");
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [note, setNote] = useState("");
+
+  useEffect(() => {
+    if (initialData) {
+      setType("expense");
+      if (initialData.amount) setAmountStr(String(initialData.amount));
+      if (initialData.category) setSelectedCategory(initialData.category);
+      if (initialData.date) setDate(initialData.date);
+      if (initialData.description || initialData.note) {
+        setNote(initialData.description || initialData.note || "");
+      }
+    }
+  }, [initialData]);
 
   const activeCategories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
