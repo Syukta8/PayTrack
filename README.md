@@ -1,92 +1,125 @@
 # PayTrack 💰
 
-A single-user personal finance tracker built with **React + Vite** (frontend) and **Firebase Auth + Google Sheets API** (backend storage).
+PayTrack is a simple, personal finance web app that saves all your money transactions directly inside your own **Google Sheet** (so you completely own your data).
 
 ---
 
-## 🚀 Quick Setup Guide
+## 📋 What You Need Before Starting
 
-### 1. Prerequisites
-Ensure you have the following installed:
-- **Node.js** (v18 or higher)
-- **npm** (v9 or higher)
+Before doing anything, make sure you have:
+1. **Node.js** installed on your computer. (Download it from [nodejs.org](https://nodejs.org/) if you don't have it).
+2. A **Google Account** (Gmail) to store your financial data.
 
 ---
 
-### 2. Clone & Install Dependencies
+## ⚡ Option 1: Instant Demo Mode (No Setup Required)
 
+If you just want to test the app on your computer immediately without setting up Firebase or Google Sheets:
+
+### Step 1: Open Terminal / Command Prompt
+Open terminal inside the project folder (`PayTrack`) and run:
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd PayTrack
-
-# Install frontend dependencies
 npm install
 ```
+*(This installs all required packages needed to run the app).*
+
+### Step 2: Create Environment File
+Run this command in your terminal to create your configuration file:
+```bash
+cp .env.example .env
+```
+*(If you are using Windows Command Prompt instead of terminal, type `copy .env.example .env`)*.
+
+### Step 3: Run the App
+Run this command:
+```bash
+npm run dev
+```
+Click or open `http://localhost:5173` in your browser.  
+🎉 **Done!** You can start testing the app immediately in Demo Mode.
 
 ---
 
-### 3. Option A: Demo Mode (Quickest)
+## 🔒 Option 2: Full Setup (Connecting your real Google Sheet)
 
-For instant local testing without Firebase configuration:
-
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-2. Ensure `VITE_DEMO_MODE=true` is set inside `.env`.
-3. Start local server:
-   ```bash
-   npm run dev
-   ```
+Follow these easy step-by-step instructions to save all your data to your private Google Sheet.
 
 ---
 
-### 4. Option B: Full Setup (Firebase & Google Sheets)
+### Step 1: Create a Free Firebase Project
 
-Follow these steps to connect your live Google Sheet database:
+1. Go to the **[Firebase Console](https://console.firebase.google.com/)** and log in with your Google account.
+2. Click **Create a project** (or **Add project**).
+3. Type a name (e.g. `My PayTrack`) and click **Continue** until your project is ready.
 
-#### Step 1: Create a Firebase Project
-1. Go to [Firebase Console](https://console.firebase.google.com/) and click **Add project**.
-2. Under **Build → Authentication**, enable **Google Sign-In**.
-3. Under **Project Settings → General**, register a new **Web App** (`</>`) and copy its SDK config.
+---
 
-#### Step 2: Configure Environment Credentials
-Open `.env` and paste your Firebase credentials, then disable demo mode:
+### Step 2: Turn On Google Sign-In
+
+1. In your Firebase sidebar on the left, click **Build → Authentication**.
+2. Click **Get Started**.
+3. Under the **Sign-in method** tab, click on **Google**.
+4. Toggle **Enable** to ON, pick your email address as the support email, and click **Save**.
+
+---
+
+### Step 3: Register Your Web App & Get Keys
+
+1. Click the **⚙️ Settings Gear icon** (top left near Project Overview) → select **Project settings**.
+2. Scroll down to **Your apps** and click the **Web icon (`</>`)**.
+3. Enter app nickname `PayTrack` and click **Register app**.
+4. You will see a box titled `firebaseConfig` containing code like this:
+   ```javascript
+   const firebaseConfig = {
+     apiKey: "AIzaSy...",
+     authDomain: "my-paytrack.firebaseapp.com",
+     projectId: "my-paytrack",
+     storageBucket: "my-paytrack.appspot.com",
+     messagingSenderId: "123456789",
+     appId: "1:123456789:web:abcdef"
+   };
+   ```
+5. Keep this browser tab open! You will copy these values into your `.env` file in the next step.
+
+---
+
+### Step 4: Configure Your `.env` File
+
+Open the `.env` file in your project code editor (or create one by copying `.env.example`), and paste your values matching each line:
 
 ```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_API_KEY=AIzaSy... (copy your apiKey value)
+VITE_FIREBASE_AUTH_DOMAIN=my-paytrack.firebaseapp.com (copy authDomain)
+VITE_FIREBASE_PROJECT_ID=my-paytrack (copy projectId)
+VITE_FIREBASE_STORAGE_BUCKET=my-paytrack.appspot.com (copy storageBucket)
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789 (copy messagingSenderId)
+VITE_FIREBASE_APP_ID=1:123456789:web:abcdef (copy appId)
 VITE_DEMO_MODE=false
 ```
+*(Make sure to set `VITE_DEMO_MODE=false` so the app connects to your real Google Sheet!)*
 
-#### Step 3: Create & Connect Your Google Sheet
-1. Open [Google Sheets](https://sheets.new) and create a new blank spreadsheet.
-2. Start the app locally:
+---
+
+### Step 5: Create a Blank Google Sheet & Connect
+
+1. Open your browser and go to **[sheets.new](https://sheets.new)** to create a brand new blank Google Sheet.
+2. Copy the URL link of your new sheet from your browser address bar (e.g., `https://docs.google.com/spreadsheets/d/1abcXYZ.../edit`).
+3. Start your app server:
    ```bash
    npm run dev
    ```
-3. Sign in with your Google account.
-4. When prompted, paste the URL of your new Google Sheet and click **Connect and initialize**.
+4. Open `http://localhost:5173` in your browser.
+5. Click **Sign in with Google** and log in.
+6. When prompted on screen, paste your Google Sheet link into the box and click **Connect and initialize**.
+
+🎉 **Congratulations!** PayTrack will automatically create your database tabs (`Transactions`, `RecurringBills`, `Budgets`, etc.) inside your Google Sheet. Every time you log an expense, it will save directly to your sheet!
 
 ---
 
-### 5. Production Build
+## 💻 Commands Summary
 
-To run TypeScript verification and output a production bundle:
-
-```bash
-npm run build
-```
-
----
-
-## 🛠 Tech Stack
-
-- **Frontend**: React, TypeScript, Vite, Framer Motion
-- **Backend / Storage**: Firebase Auth, Google Sheets API v4
-- **Architecture**: MVVM (Model–View–ViewModel)
+| Command | What it does |
+| :--- | :--- |
+| `npm install` | Installs all packages needed to run PayTrack |
+| `npm run dev` | Starts the app on your computer (`http://localhost:5173`) |
+| `npm run build` | Builds the project for production deployment |
