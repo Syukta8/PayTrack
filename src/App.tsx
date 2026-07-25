@@ -216,6 +216,11 @@ export default function App() {
               <HomeDashboardView
                 transactions={transactions}
                 onSelectReceipt={setSelectedReceipt}
+                onDeleteTransaction={async (transactionId) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.deleteTransaction(transactionId);
+                  await vm.reload();
+                }}
               />
             )}
 

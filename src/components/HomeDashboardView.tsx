@@ -5,6 +5,7 @@ import type { Transaction } from "../model/types";
 interface HomeDashboardViewProps {
   transactions: Transaction[];
   onSelectReceipt: (receipt: Transaction) => void;
+  onDeleteTransaction?: (transactionId: string) => Promise<void>;
 }
 
 const CATEGORY_COLORS = ["#3b82f6", "#2563eb", "#8b5cf6", "#f97316", "#ec4899", "#22c55e"];
@@ -19,6 +20,7 @@ const SUBCATEGORY_DATA = [
 export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   transactions,
   onSelectReceipt,
+  onDeleteTransaction,
 }) => {
   const [activeSegment, setActiveSegment] = useState<"details" | "overview">("details");
   const [searchQuery, setSearchQuery] = useState("");
@@ -240,10 +242,34 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                     {isEligibleCategory && <div className="receipt-item-count">4 items</div>}
                   </div>
 
-                  <div className="receipt-amount-box">
-                    <div className="receipt-amount">RM{tx.amount.toFixed(2)}</div>
-                    {isTaxableCategory && (
-                      <div className="receipt-tax-sub">RM{(tx.amount * 0.06).toFixed(2)}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div className="receipt-amount-box">
+                      <div className="receipt-amount">RM{tx.amount.toFixed(2)}</div>
+                      {isTaxableCategory && (
+                        <div className="receipt-tax-sub">RM{(tx.amount * 0.06).toFixed(2)}</div>
+                      )}
+                    </div>
+                    {onDeleteTransaction && (
+                      <button
+                        title="Delete expense"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void onDeleteTransaction(tx.id);
+                        }}
+                        style={{
+                          padding: 6,
+                          color: "var(--text-light)",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     )}
                   </div>
                 </div>

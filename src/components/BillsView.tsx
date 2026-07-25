@@ -104,25 +104,37 @@ export const BillsView: React.FC<BillsViewProps> = ({
                   </div>
                 </div>
 
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "0.95rem", fontWeight: 800 }}>RM{item.bill.amount.toFixed(2)}</div>
-                  {!isPaid ? (
-                    <button
-                      className="pill-btn active"
-                      disabled={busyId === item.bill.id}
-                      onClick={() => handlePay(item.bill.id)}
-                      style={{ fontSize: "0.7rem", padding: "4px 10px", marginTop: 4 }}
-                    >
-                      {busyId === item.bill.id ? "Saving…" : "Mark Paid"}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => onDeleteBill(item.bill.id)}
-                      style={{ fontSize: "0.68rem", color: "var(--text-light)", marginTop: 4 }}
-                    >
-                      Remove
-                    </button>
-                  )}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "0.95rem", fontWeight: 800 }}>RM{item.bill.amount.toFixed(2)}</div>
+                    {!isPaid && (
+                      <button
+                        className="pill-btn active"
+                        disabled={busyId === item.bill.id}
+                        onClick={() => handlePay(item.bill.id)}
+                        style={{ fontSize: "0.7rem", padding: "4px 10px", marginTop: 4 }}
+                      >
+                        {busyId === item.bill.id ? "Saving…" : "Mark Paid"}
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    title="Delete recurring bill"
+                    onClick={() => onDeleteBill(item.bill.id)}
+                    style={{
+                      padding: 6,
+                      color: "var(--text-light)",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginLeft: 4,
+                    }}
+                  >
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             );
