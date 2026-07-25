@@ -120,7 +120,11 @@ export const BillsView: React.FC<BillsViewProps> = ({
                   </div>
                   <button
                     title="Delete recurring bill"
-                    onClick={() => onDeleteBill(item.bill.id)}
+                    onClick={() => {
+                      if (window.confirm("Are you sure you want to delete this recurring bill?")) {
+                        void onDeleteBill(item.bill.id);
+                      }
+                    }}
                     style={{
                       padding: 6,
                       color: "var(--text-light)",

@@ -254,7 +254,9 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                         title="Delete expense"
                         onClick={(e) => {
                           e.stopPropagation();
-                          void onDeleteTransaction(tx.id);
+                          if (window.confirm("Are you sure you want to delete this expense transaction?")) {
+                            void onDeleteTransaction(tx.id);
+                          }
                         }}
                         style={{
                           padding: 6,
