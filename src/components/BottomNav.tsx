@@ -1,18 +1,13 @@
 import React from "react";
 
-export type NavTab = "home" | "log" | "goals" | "more";
+export type NavTab = "home" | "search" | "scan" | "chat" | "settings";
 
 interface BottomNavProps {
   activeTab: NavTab;
   onTabChange: (tab: NavTab) => void;
-  onFabClick: () => void;
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({
-  activeTab,
-  onTabChange,
-  onFabClick,
-}) => {
+export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   return (
     <nav className="bottom-nav-bar">
       <button
@@ -26,39 +21,44 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       </button>
 
       <button
-        className={`nav-item ${activeTab === "log" ? "active" : ""}`}
-        onClick={() => onTabChange("log")}
+        className={`nav-item ${activeTab === "search" ? "active" : ""}`}
+        onClick={() => onTabChange("search")}
       >
         <svg className="nav-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        <span>Log</span>
-      </button>
-
-      <button className="fab-center-btn" onClick={onFabClick} aria-label="Quick Actions">
-        <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-        </svg>
+        <span>Search</span>
       </button>
 
       <button
-        className={`nav-item ${activeTab === "goals" ? "active" : ""}`}
-        onClick={() => onTabChange("goals")}
+        className={`nav-item ${activeTab === "scan" ? "active" : ""}`}
+        onClick={() => onTabChange("scan")}
       >
         <svg className="nav-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
-        <span>Goals</span>
+        <span>Scan</span>
       </button>
 
       <button
-        className={`nav-item ${activeTab === "more" ? "active" : ""}`}
-        onClick={() => onTabChange("more")}
+        className={`nav-item ${activeTab === "chat" ? "active" : ""}`}
+        onClick={() => onTabChange("chat")}
       >
         <svg className="nav-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
         </svg>
-        <span>More</span>
+        <span>Chat</span>
+      </button>
+
+      <button
+        className={`nav-item ${activeTab === "settings" ? "active" : ""}`}
+        onClick={() => onTabChange("settings")}
+      >
+        <svg className="nav-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+        </svg>
+        <span>Settings</span>
       </button>
     </nav>
   );

@@ -5,24 +5,19 @@ import { useTrackerViewModel } from "./viewModels/useTrackerViewModel";
 
 import { BottomNav } from "./components/BottomNav";
 import type { NavTab } from "./components/BottomNav";
-import { QuickActionsModal } from "./components/QuickActionsModal";
-import { AddExpenseModal } from "./components/AddExpenseModal";
-import { GoalsAndMoneyView, BNPLModal } from "./components/GoalsAndMoneyView";
-
-const currency = (value: number): string =>
-  `RM${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+import { HomeDashboardView } from "./components/HomeDashboardView";
+import { ReceiptDetailsView } from "./components/ReceiptDetailsView";
+import type { Transaction } from "./model/types";
 
 export default function App() {
   const { user, loading: authLoading, sheetsAccessToken, configurationError, signIn, signOut } = useAuth();
   const vm = useTrackerViewModel(sheetsAccessToken);
 
-  // Navigation and Modal UI State
+  // Navigation and Selection state
   const [activeTab, setActiveTab] = useState<NavTab>("home");
-  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
-  const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
-  const [isBNPLOpen, setIsBNPLOpen] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState<Transaction | null>(null);
 
-  // Existing auth form state
+  // Auth connection state
   const [sheetLink, setSheetLink] = useState("");
   const [initializing, setInitializing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -37,17 +32,6 @@ export default function App() {
       setActionError(reason instanceof Error ? reason.message : "Unable to connect sheet.");
     } finally {
       setInitializing(false);
-    }
-  }
-
-  async function run(action: () => Promise<void>, confirmation?: string) {
-    if (confirmation && !window.confirm(confirmation)) return;
-    setActionError(null);
-    try {
-      await action();
-      await vm.reload();
-    } catch (reason) {
-      setActionError(reason instanceof Error ? reason.message : "Action failed.");
     }
   }
 
@@ -103,215 +87,82 @@ export default function App() {
     );
   }
 
-  const data = vm.data;
-  const netSavings = data ? data.dashboard.netAmount : 0;
-  const totalIncome = data ? data.dashboard.totalIncome : 0;
-  const totalExpense = data ? data.dashboard.totalExpense : 0;
-  const transactionCount = data ? data.transactions.length : 0;
-  const savingsRate = totalIncome > 0 ? Math.max(0, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)) : 0;
-
-  const handleAddTransactionSubmit = async (formData: {
-    type: "expense" | "income";
-    amount: number;
-    category: string;
-    paymentMethod: string;
-    date: string;
-    note: string;
-  }) => {
-    if (!vm.tracker) return;
-    await run(async () => {
-      await vm.tracker?.addTransaction({
-        date: formData.date,
-        type: formData.type,
-        amount: formData.amount,
-        category: formData.category,
-        paymentType: formData.paymentMethod,
-        description: formData.note,
-        remarks: "",
-      });
-    });
-  };
+  const transactions = vm.data ? vm.data.transactions : [];
 
   return (
     <div className="app-viewport">
       <div className="app-container">
-        {/* Top Navigation Bar Header */}
-        <header className="app-header">
-          <div className="user-greeting">
-            <span className="greeting-label">Good morning</span>
-            <span className="user-name">{user?.displayName || user?.email?.split("@")[0] || "MUHAMMAD"}</span>
-          </div>
+        {selectedReceipt ? (
+          <ReceiptDetailsView
+            receipt={selectedReceipt}
+            onBack={() => setSelectedReceipt(null)}
+          />
+        ) : (
+          <>
+            {activeTab === "home" && (
+              <HomeDashboardView
+                transactions={transactions}
+                onSelectReceipt={setSelectedReceipt}
+              />
+            )}
 
-          <div className="header-right">
-            <button className="icon-circle-btn" aria-label="Notifications">
-              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </button>
-          </div>
-        </header>
-
-        {/* Tab Views */}
-        {activeTab === "home" && (
-          <main style={{ padding: 0 }}>
-            {/* Dark Net Savings Hero Card (Image 1) */}
-            <div className="dark-hero-card">
-              <div className="hero-eyebrow">JULY 2026 · NET SAVINGS</div>
-              <div className="hero-amount">
-                {netSavings >= 0 ? "+" : "−"}
-                {currency(Math.abs(netSavings))}
-              </div>
-
-              <div className="hero-divider" />
-
-              <div className="hero-stats-row">
-                <div className="stat-item">
-                  <div className="stat-label-dot">
-                    <span className="dot green" />
-                    <span>INCOME</span>
-                  </div>
-                  <span className="stat-value">{currency(totalIncome)}</span>
+            {activeTab === "search" && (
+              <main style={{ padding: "20px" }}>
+                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 12 }}>Search Receipts</h2>
+                <div className="search-box-card" style={{ margin: 0 }}>
+                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input type="text" placeholder="Search by store or item name" />
                 </div>
+              </main>
+            )}
 
-                <div className="stat-item">
-                  <div className="stat-label-dot">
-                    <span className="dot red" />
-                    <span>EXPENSE</span>
-                  </div>
-                  <span className="stat-value">{currency(totalExpense)}</span>
+            {activeTab === "scan" && (
+              <main style={{ padding: "20px", textAlign: "center" }}>
+                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 12 }}>Scan Receipt</h2>
+                <div className="section-card" style={{ padding: 40, margin: 0 }}>
+                  <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ margin: "0 auto 16px" }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  </svg>
+                  <button className="primary-dark-btn">Upload or Capture Receipt</button>
                 </div>
-              </div>
-            </div>
+              </main>
+            )}
 
-            {/* 2-Column Stat Cards */}
-            <div className="stats-two-grid">
-              <div className="white-stat-card">
-                <span className="eyebrow">TRANSACTIONS</span>
-                <span className="value">{transactionCount}</span>
-              </div>
-              <div className="white-stat-card">
-                <span className="eyebrow">SAVINGS RATE</span>
-                <span className="value">{savingsRate}%</span>
-              </div>
-            </div>
+            {activeTab === "chat" && (
+              <main style={{ padding: "20px", textAlign: "center" }}>
+                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 12 }}>AI Finance Chat</h2>
+                <div className="section-card" style={{ padding: 30, margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
+                  Ask questions about your spending, receipt items, or tax breakdowns.
+                </div>
+              </main>
+            )}
 
-            {/* Recent Section Card */}
-            <div className="section-card">
-              <div className="section-header">
-                <h3>Recent</h3>
-                <button className="see-all-btn" onClick={() => setActiveTab("log")}>
-                  See all
-                </button>
-              </div>
-
-              {data && data.transactions.length > 0 ? (
-                <div>
-                  {data.transactions.slice(0, 4).map((tx) => (
-                    <div className="entry-row" key={tx.id}>
-                      <div>
-                        <strong>{tx.description || tx.category}</strong>
-                        <small style={{ display: "block", color: "var(--text-light)", fontSize: "0.75rem" }}>
-                          {tx.category} · {tx.date}
-                        </small>
-                      </div>
-                      <b style={{ color: tx.type === "income" ? "var(--accent-green)" : "var(--text-main)" }}>
-                        {tx.type === "income" ? "+" : "−"}
-                        {currency(tx.amount)}
-                      </b>
+            {activeTab === "settings" && (
+              <main style={{ padding: "20px" }}>
+                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 12 }}>Settings</h2>
+                <div className="section-card" style={{ margin: 0 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+                      Account: <strong>{user?.email || "Demo User"}</strong>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-title">No transactions yet</div>
-                  <div className="empty-sub">Tap + to add your first one</div>
-                </div>
-              )}
-            </div>
-          </main>
-        )}
-
-        {activeTab === "log" && (
-          <main style={{ padding: "0 20px 20px" }}>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 800, margin: "16px 0" }}>Transactions Log</h2>
-            <div className="section-card" style={{ margin: 0 }}>
-              {data && data.transactions.length > 0 ? (
-                data.transactions.map((tx) => (
-                  <div className="entry-row" key={tx.id}>
-                    <div>
-                      <strong>{tx.description || tx.category}</strong>
-                      <small style={{ display: "block", color: "var(--text-light)", fontSize: "0.75rem" }}>
-                        {tx.category} · {tx.paymentType || "Cash"} · {tx.date}
-                      </small>
-                    </div>
-                    <b style={{ color: tx.type === "income" ? "var(--accent-green)" : "var(--text-main)" }}>
-                      {tx.type === "income" ? "+" : "−"}
-                      {currency(tx.amount)}
-                    </b>
+                    {!vm.isDemo && (
+                      <button className="primary-dark-btn" onClick={() => void signOut()}>
+                        Sign Out
+                      </button>
+                    )}
                   </div>
-                ))
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-title">No logged transactions</div>
-                  <div className="empty-sub">Add transactions using the central + button</div>
                 </div>
-              )}
-            </div>
-          </main>
+              </main>
+            )}
+
+            <BottomNav
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          </>
         )}
-
-        {activeTab === "goals" && (
-          <GoalsAndMoneyView onOpenBNPLModal={() => setIsBNPLOpen(true)} />
-        )}
-
-        {activeTab === "more" && (
-          <main style={{ padding: "0 20px 20px" }}>
-            <h2 style={{ fontSize: "1.5rem", fontWeight: 800, margin: "16px 0" }}>More Options</h2>
-            <div className="section-card" style={{ margin: 0 }}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                  Signed in as: <strong>{user?.email || "Demo User"}</strong>
-                </div>
-                {!vm.isDemo && (
-                  <button
-                    className="pill-btn active"
-                    style={{ padding: "10px 16px", textAlign: "center" }}
-                    onClick={() => void signOut()}
-                  >
-                    Sign Out
-                  </button>
-                )}
-              </div>
-            </div>
-          </main>
-        )}
-
-        {/* Floating Bottom Nav Bar */}
-        <BottomNav
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onFabClick={() => setIsQuickActionsOpen(true)}
-        />
-
-        {/* Modals & Bottom Drawers */}
-        <QuickActionsModal
-          isOpen={isQuickActionsOpen}
-          onClose={() => setIsQuickActionsOpen(false)}
-          onOpenAddTransaction={() => setIsAddExpenseOpen(true)}
-          onOpenSetBudget={() => alert("Set Budget modal option chosen")}
-          onOpenBNPLModal={() => setIsBNPLOpen(true)}
-        />
-
-        <AddExpenseModal
-          isOpen={isAddExpenseOpen}
-          onClose={() => setIsAddExpenseOpen(false)}
-          onSubmit={handleAddTransactionSubmit}
-        />
-
-        <BNPLModal
-          isOpen={isBNPLOpen}
-          onClose={() => setIsBNPLOpen(false)}
-        />
       </div>
     </div>
   );
