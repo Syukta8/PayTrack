@@ -1,13 +1,18 @@
 import React from "react";
 
-export type NavTab = "home" | "search" | "add" | "scan" | "settings";
+export type NavTab = "home" | "settings";
 
 interface BottomNavProps {
   activeTab: NavTab;
   onTabChange: (tab: NavTab) => void;
+  onFabClick: () => void;
 }
 
-export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
+export const BottomNav: React.FC<BottomNavProps> = ({
+  activeTab,
+  onTabChange,
+  onFabClick,
+}) => {
   return (
     <nav className="bottom-nav-bar">
       <button
@@ -21,34 +26,26 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) 
       </button>
 
       <button
-        className={`nav-item ${activeTab === "search" ? "active" : ""}`}
-        onClick={() => onTabChange("search")}
+        className="fab-center-btn"
+        onClick={onFabClick}
+        aria-label="Quick Actions"
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: "50%",
+          backgroundColor: "#0f172a",
+          color: "#ffffff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginTop: -24,
+          border: "3px solid var(--bg-surface)",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
+        }}
       >
-        <svg className="nav-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
         </svg>
-        <span>Search</span>
-      </button>
-
-      <button
-        className={`nav-item ${activeTab === "add" ? "active" : ""}`}
-        onClick={() => onTabChange("add")}
-      >
-        <svg className="nav-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
-        </svg>
-        <span>Add</span>
-      </button>
-
-      <button
-        className={`nav-item ${activeTab === "scan" ? "active" : ""}`}
-        onClick={() => onTabChange("scan")}
-      >
-        <svg className="nav-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        <span>Scan</span>
       </button>
 
       <button

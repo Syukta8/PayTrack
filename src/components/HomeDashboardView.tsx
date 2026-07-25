@@ -21,6 +21,11 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   onSelectReceipt,
 }) => {
   const [activeSegment, setActiveSegment] = useState<"details" | "overview">("details");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredTransactions = transactions.filter((t) =>
+    (t.description || t.category).toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const totalExpense = transactions
     .filter((t) => t.type === "expense")
@@ -154,12 +159,33 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
       {activeSegment === "details" ? (
         <div className="section-card">
           <div className="section-card-title">Recent Receipts</div>
-          <div className="section-card-sub">
-            Showing {transactions.length} out of {transactions.length} results
+          
+          {/* Integrated Search Box */}
+          <div className="search-box-card" style={{ margin: "12px 0 16px" }}>
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search by store or item name"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")}>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
 
-          {transactions.length > 0 ? (
-            transactions.map((tx) => (
+          <div className="section-card-sub">
+            Showing {filteredTransactions.length} out of {transactions.length} results
+          </div>
+
+          {filteredTransactions.length > 0 ? (
+            filteredTransactions.map((tx) => (
               <div
                 className="receipt-row"
                 key={tx.id}

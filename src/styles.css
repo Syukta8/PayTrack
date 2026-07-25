@@ -428,3 +428,240 @@ button {
   font-weight: 700;
   text-align: center;
 }
+
+/* Modal Overlay & Bottom Sheet Popout */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-sheet {
+  width: 100%;
+  max-width: 720px;
+  background-color: var(--bg-surface);
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  padding: 16px 20px 32px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow-md);
+  box-sizing: border-box;
+}
+
+.sheet-drag-handle {
+  width: 36px;
+  height: 4px;
+  background-color: var(--border-light);
+  border-radius: 2px;
+  margin: 0 auto 16px;
+}
+
+.sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.sheet-header h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.sheet-action-btn {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.sheet-action-btn.save {
+  color: var(--text-main);
+}
+
+.sheet-action-btn.cancel {
+  color: var(--text-muted);
+}
+
+/* Quick Actions Grid */
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.action-tile {
+  background-color: var(--bg-surface);
+  border: 1fr solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  text-align: left;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.action-tile:hover {
+  background-color: var(--bg-subtle);
+}
+
+.tile-icon-box {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+}
+
+.tile-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.tile-sub {
+  font-size: 0.68rem;
+  color: var(--text-light);
+}
+
+/* Segmented Pill Toggles */
+.segmented-pill {
+  display: inline-flex;
+  background-color: var(--border-light);
+  padding: 3px;
+  border-radius: var(--radius-pill);
+}
+
+.pill-btn {
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.pill-btn.active {
+  background-color: #0f172a;
+  color: #ffffff;
+}
+
+/* Category Circular Selectors */
+.category-scroll-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+}
+
+.category-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cat-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-main);
+}
+
+.category-item.active .cat-circle {
+  background-color: #0f172a;
+  color: #ffffff;
+}
+
+.cat-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.category-item.active .cat-label {
+  color: var(--text-main);
+  font-weight: 800;
+}
+
+/* Option Pills Row */
+.pill-options-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 20px;
+}
+
+.opt-pill {
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.opt-pill.active {
+  background-color: #0f172a;
+  color: #ffffff;
+}
+
+.form-field-card {
+  background-color: var(--bg-canvas);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.field-input-row input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+  outline: none;
+  color: var(--text-main);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+

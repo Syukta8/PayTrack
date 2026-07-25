@@ -8,6 +8,7 @@ import type { NavTab } from "./components/BottomNav";
 import { HomeDashboardView } from "./components/HomeDashboardView";
 import { ReceiptDetailsView } from "./components/ReceiptDetailsView";
 import { AddExpenseModal } from "./components/AddExpenseModal";
+import { QuickActionsModal } from "./components/QuickActionsModal";
 import type { Transaction } from "./model/types";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -19,6 +20,7 @@ export default function App() {
   // Navigation, Selection, Modal, and Theme state
   const [activeTab, setActiveTab] = useState<NavTab>("home");
   const [selectedReceipt, setSelectedReceipt] = useState<Transaction | null>(null);
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     return (localStorage.getItem("paytrack.theme") as ThemeMode) || "system";
@@ -66,14 +68,6 @@ export default function App() {
       setInitializing(false);
     }
   }
-
-  const handleTabChange = (tab: NavTab) => {
-    if (tab === "add") {
-      setIsAddModalOpen(true);
-    } else {
-      setActiveTab(tab);
-    }
-  };
 
   const handleAddTransactionSubmit = async (formData: {
     type: "expense" | "income";
@@ -171,30 +165,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === "search" && (
-              <main style={{ padding: "20px" }}>
-                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 12 }}>Search Receipts</h2>
-                <div className="search-box-card" style={{ margin: 0 }}>
-                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <input type="text" placeholder="Search by store or item name" />
-                </div>
-              </main>
-            )}
-
-            {activeTab === "scan" && (
-              <main style={{ padding: "20px", textAlign: "center" }}>
-                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 12 }}>Scan Receipt</h2>
-                <div className="section-card" style={{ padding: 40, margin: 0 }}>
-                  <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ margin: "0 auto 16px" }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  </svg>
-                  <button className="primary-dark-btn">Upload or Capture Receipt</button>
-                </div>
-              </main>
-            )}
-
             {activeTab === "settings" && (
               <main style={{ padding: "20px" }}>
                 <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 16 }}>Settings</h2>
@@ -240,12 +210,23 @@ export default function App() {
               </main>
             )}
 
+            {/* 3-Item Bottom Nav Bar with FAB (+) */}
             <BottomNav
               activeTab={activeTab}
-              onTabChange={handleTabChange}
+              onTabChange={setActiveTab}
+              onFabClick={() => setIsQuickActionsOpen(true)}
             />
 
-            {/* Manual Add Expense Modal */}
+            {/* Quick Actions Drawer Popout */}
+            <QuickActionsModal
+              isOpen={isQuickActionsOpen}
+              onClose={() => setIsQuickActionsOpen(false)}
+              onOpenAddTransaction={() => setIsAddModalOpen(true)}
+              onOpenSetBudget={() => alert("Set Budget modal option chosen")}
+              onOpenBNPLModal={() => alert("Scan Receipt / Loan option chosen")}
+            />
+
+            {/* Add Expense Modal Drawer */}
             <AddExpenseModal
               isOpen={isAddModalOpen}
               onClose={() => setIsAddModalOpen(false)}
