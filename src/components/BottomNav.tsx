@@ -1,6 +1,6 @@
 import React from "react";
 
-export type NavTab = "home" | "search" | "scan" | "chat" | "settings";
+export type NavTab = "home" | "search" | "add" | "scan" | "settings";
 
 interface BottomNavProps {
   activeTab: NavTab;
@@ -31,6 +31,16 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) 
       </button>
 
       <button
+        className={`nav-item ${activeTab === "add" ? "active" : ""}`}
+        onClick={() => onTabChange("add")}
+      >
+        <svg className="nav-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+        </svg>
+        <span>Add</span>
+      </button>
+
+      <button
         className={`nav-item ${activeTab === "scan" ? "active" : ""}`}
         onClick={() => onTabChange("scan")}
       >
@@ -39,16 +49,6 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) 
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
         <span>Scan</span>
-      </button>
-
-      <button
-        className={`nav-item ${activeTab === "chat" ? "active" : ""}`}
-        onClick={() => onTabChange("chat")}
-      >
-        <svg className="nav-icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-        <span>Chat</span>
       </button>
 
       <button

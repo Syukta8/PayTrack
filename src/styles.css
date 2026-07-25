@@ -32,6 +32,22 @@
   background-color: var(--bg-canvas);
 }
 
+[data-theme="dark"] {
+  --bg-canvas: #090d16;
+  --bg-gradient: linear-gradient(180deg, #131b2e 0%, #0d1322 100%);
+  --bg-surface: #172033;
+  --bg-subtle: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-light: #64748b;
+  --border-light: #334155;
+  --border-subtle: #1e293b;
+  --badge-tax-bg: #3b2205;
+  --badge-tax-text: #fdba74;
+  --badge-service-bg: #450a0a;
+  --badge-service-text: #fca5a5;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -157,7 +173,7 @@ button {
 /* Segmented Tabs (Details vs Overview) */
 .segmented-tab-container {
   display: flex;
-  background-color: #e2e8f0;
+  background-color: var(--border-light);
   padding: 4px;
   border-radius: var(--radius-sm);
   margin: 20px 20px 16px;
@@ -175,7 +191,7 @@ button {
 }
 
 .segmented-tab-btn.active {
-  background-color: #ffffff;
+  background-color: var(--bg-surface);
   color: var(--text-main);
   box-shadow: var(--shadow-sm);
 }

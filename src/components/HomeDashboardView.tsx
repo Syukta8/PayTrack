@@ -96,6 +96,31 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                   <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const dataPoint = payload[0].payload;
+                    return (
+                      <div
+                        style={{
+                          backgroundColor: "#0f172a",
+                          color: "#ffffff",
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          fontSize: "0.75rem",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                        }}
+                      >
+                        <div style={{ color: "#94a3b8", fontWeight: 600 }}>Day {dataPoint.day} Oct 2026</div>
+                        <div style={{ fontWeight: 800, fontSize: "0.88rem" }}>
+                          RM{Number(dataPoint.val).toFixed(2)}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
               <Area
                 type="monotone"
                 dataKey="val"

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useAuth } from "./model/AuthContext";
 import { useTrackerViewModel } from "./viewModels/useTrackerViewModel";
@@ -7,20 +7,52 @@ import { BottomNav } from "./components/BottomNav";
 import type { NavTab } from "./components/BottomNav";
 import { HomeDashboardView } from "./components/HomeDashboardView";
 import { ReceiptDetailsView } from "./components/ReceiptDetailsView";
+import { AddExpenseModal } from "./components/AddExpenseModal";
 import type { Transaction } from "./model/types";
+
+type ThemeMode = "light" | "dark" | "system";
 
 export default function App() {
   const { user, loading: authLoading, sheetsAccessToken, configurationError, signIn, signOut } = useAuth();
   const vm = useTrackerViewModel(sheetsAccessToken);
 
-  // Navigation and Selection state
+  // Navigation, Selection, Modal, and Theme state
   const [activeTab, setActiveTab] = useState<NavTab>("home");
   const [selectedReceipt, setSelectedReceipt] = useState<Transaction | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    return (localStorage.getItem("paytrack.theme") as ThemeMode) || "system";
+  });
 
   // Auth connection state
   const [sheetLink, setSheetLink] = useState("");
   const [initializing, setInitializing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Handle Theme switching (Light / Dark / System)
+  useEffect(() => {
+    localStorage.setItem("paytrack.theme", themeMode);
+    const applyTheme = (mode: ThemeMode) => {
+      let resolvedTheme = mode;
+      if (mode === "system") {
+        resolvedTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      if (resolvedTheme === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+      } else {
+        document.documentElement.removeAttribute("data-theme");
+      }
+    };
+
+    applyTheme(themeMode);
+
+    if (themeMode === "system") {
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const handleChange = () => applyTheme("system");
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+  }, [themeMode]);
 
   async function connect(event: FormEvent) {
     event.preventDefault();
@@ -34,6 +66,39 @@ export default function App() {
       setInitializing(false);
     }
   }
+
+  const handleTabChange = (tab: NavTab) => {
+    if (tab === "add") {
+      setIsAddModalOpen(true);
+    } else {
+      setActiveTab(tab);
+    }
+  };
+
+  const handleAddTransactionSubmit = async (formData: {
+    type: "expense" | "income";
+    amount: number;
+    category: string;
+    paymentMethod: string;
+    date: string;
+    note: string;
+  }) => {
+    if (!vm.tracker) return;
+    try {
+      await vm.tracker.addTransaction({
+        date: formData.date,
+        type: formData.type,
+        amount: formData.amount,
+        category: formData.category,
+        paymentType: formData.paymentMethod,
+        description: formData.note,
+        remarks: "",
+      });
+      await vm.reload();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Failed to add transaction.");
+    }
+  };
 
   if (authLoading) return <main style={{ padding: 20 }}>Loading…</main>;
 
@@ -130,18 +195,36 @@ export default function App() {
               </main>
             )}
 
-            {activeTab === "chat" && (
-              <main style={{ padding: "20px", textAlign: "center" }}>
-                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 12 }}>AI Finance Chat</h2>
-                <div className="section-card" style={{ padding: 30, margin: 0, color: "var(--text-muted)", fontSize: "0.9rem" }}>
-                  Ask questions about your spending, receipt items, or tax breakdowns.
-                </div>
-              </main>
-            )}
-
             {activeTab === "settings" && (
               <main style={{ padding: "20px" }}>
-                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 12 }}>Settings</h2>
+                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 16 }}>Settings</h2>
+
+                {/* Theme Mode Switch Card */}
+                <div className="section-card" style={{ margin: "0 0 16px" }}>
+                  <div style={{ fontSize: "0.9rem", fontWeight: 700, marginBottom: 12 }}>Appearance / Theme</div>
+                  <div className="segmented-tab-container" style={{ margin: 0 }}>
+                    <button
+                      className={`segmented-tab-btn ${themeMode === "light" ? "active" : ""}`}
+                      onClick={() => setThemeMode("light")}
+                    >
+                      Light
+                    </button>
+                    <button
+                      className={`segmented-tab-btn ${themeMode === "dark" ? "active" : ""}`}
+                      onClick={() => setThemeMode("dark")}
+                    >
+                      Dark
+                    </button>
+                    <button
+                      className={`segmented-tab-btn ${themeMode === "system" ? "active" : ""}`}
+                      onClick={() => setThemeMode("system")}
+                    >
+                      System
+                    </button>
+                  </div>
+                </div>
+
+                {/* Account Actions Card */}
                 <div className="section-card" style={{ margin: 0 }}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
@@ -159,7 +242,14 @@ export default function App() {
 
             <BottomNav
               activeTab={activeTab}
-              onTabChange={setActiveTab}
+              onTabChange={handleTabChange}
+            />
+
+            {/* Manual Add Expense Modal */}
+            <AddExpenseModal
+              isOpen={isAddModalOpen}
+              onClose={() => setIsAddModalOpen(false)}
+              onSubmit={handleAddTransactionSubmit}
             />
           </>
         )}
