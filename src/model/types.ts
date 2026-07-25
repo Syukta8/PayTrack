@@ -54,6 +54,5 @@ export interface DashboardSummary {
   totalExpense: number;
   netAmount: number;
   spendByCategory: { category: string; amount: number }[];
-  budgets: { category: string; monthlyLimit: number; spent: number; remaining: number }[];
   bills: BillStatus[];
 }
