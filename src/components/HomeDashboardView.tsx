@@ -8,14 +8,8 @@ interface HomeDashboardViewProps {
   onDeleteTransaction?: (transactionId: string) => Promise<void>;
 }
 
-const CATEGORY_COLORS = ["#3b82f6", "#2563eb", "#8b5cf6", "#f97316", "#ec4899", "#22c55e"];
-const SUBCATEGORY_DATA = [
-  { name: "Dairy & Eggs", amount: 92, fill: "#a855f7" },
-  { name: "Restaurant", amount: 68, fill: "#f97316" },
-  { name: "Fruits & Vegetables", amount: 32, fill: "#ec4899" },
-  { name: "Fast Food", amount: 24, fill: "#06b6d4" },
-  { name: "Beverages", amount: 18, fill: "#78350f" },
-];
+const CATEGORY_COLORS = ["#3b82f6", "#2563eb", "#8b5cf6", "#f97316", "#ec4899", "#22c55e", "#06b6d4", "#a855f7"];
+const BAR_COLORS = ["#a855f7", "#f97316", "#ec4899", "#06b6d4", "#78350f", "#3b82f6", "#10b981"];
 
 export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   transactions,
@@ -40,8 +34,19 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   let dynamicTax = 0;
   let dynamicServiceCharge = 0;
 
+  // Dynamic distribution maps
+  const categoryMap = new Map<string, number>();
+  const subcategoryMap = new Map<string, number>();
+
   transactions.forEach((t) => {
     if (t.type === "expense") {
+      // Category totals
+      categoryMap.set(t.category, (categoryMap.get(t.category) || 0) + t.amount);
+
+      // Subcategory / Description totals
+      const subName = t.description || t.category;
+      subcategoryMap.set(subName, (subcategoryMap.get(subName) || 0) + t.amount);
+
       // Dynamic Tax (6% for Food & Dining or Shopping)
       if (t.category === "Food & Dining" || t.category === "Shopping") {
         dynamicTax += t.amount * 0.06;
@@ -69,25 +74,18 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
     };
   });
 
-  // Spending by category distribution for Pie Chart
-  const categoryMap = new Map<string, number>();
-  transactions.forEach((t) => {
-    if (t.type === "expense") {
-      categoryMap.set(t.category, (categoryMap.get(t.category) || 0) + t.amount);
-    }
-  });
-
+  // Dynamic Pie Chart Data from actual Google Sheet categories
   const pieData = Array.from(categoryMap.entries()).map(([name, value]) => ({
     name,
     value,
   }));
 
-  if (pieData.length === 0) {
-    pieData.push(
-      { name: "Groceries", value: 57.1 },
-      { name: "Dining & Takeout", value: 38.0 }
-    );
-  }
+  // Dynamic Bar Chart Data from actual Google Sheet subcategories/items
+  const subcategoryData = Array.from(subcategoryMap.entries()).map(([name, amount], idx) => ({
+    name,
+    amount,
+    fill: BAR_COLORS[idx % BAR_COLORS.length],
+  }));
 
   const firstDayStr = `${currentMonthPrefix}-01`;
   const lastDayStr = `${currentMonthPrefix}-${String(daysInMonth).padStart(2, "0")}`;
@@ -329,19 +327,26 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
           {/* Spending by Subcategory Bar Chart */}
           <div className="section-card">
             <div className="section-card-title">Spending by Subcategory</div>
-            <div style={{ height: 220, marginTop: 16 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={SUBCATEGORY_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
-                  <XAxis dataKey="name" interval={0} angle={-90} textAnchor="end" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(val) => `RM${val}`} />
-                  <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
-                    {SUBCATEGORY_DATA.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {subcategoryData.length > 0 ? (
+              <div style={{ height: 220, marginTop: 16 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={subcategoryData} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
+                    <XAxis dataKey="name" interval={0} angle={-30} textAnchor="end" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} tickFormatter={(val) => `RM${val}`} />
+                    <Tooltip formatter={(value) => `RM${Number(value).toFixed(2)}`} />
+                    <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                      {subcategoryData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                No expense subcategory data recorded.
+              </div>
+            )}
           </div>
         </div>
       )}
