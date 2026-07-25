@@ -63,30 +63,24 @@ button {
 
 .app-container {
   width: 100%;
-  max-width: 480px; /* iPhone / Mobile frame constraint on desktop */
+  max-width: 100%;
   min-height: 100vh;
   background-color: var(--bg-canvas);
   position: relative;
   display: flex;
   flex-direction: column;
-  padding-bottom: 90px; /* Space for floating bottom navbar */
+  padding-bottom: 90px;
 }
 
-/* On Desktop / Tablet: Optional Card Web Wrapper */
+/* On Desktop / Tablet Responsive View */
 @media (min-width: 768px) {
-  .app-viewport {
-    padding: 24px 0;
-  }
   .app-container {
-    min-height: 840px;
-    height: 90vh;
-    border-radius: 36px;
-    box-shadow: var(--shadow-lg);
-    border: 8px solid #1f1f23;
-    overflow: hidden;
-    overflow-y: auto;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px 20px 100px;
   }
 }
+
 
 /* Header Component */
 .app-header {
@@ -305,7 +299,6 @@ button {
   color: var(--text-light);
 }
 
-/* Floating Bottom Navigation Bar */
 .bottom-nav-bar {
   position: fixed;
   bottom: 0;
@@ -326,9 +319,9 @@ button {
 
 @media (min-width: 768px) {
   .bottom-nav-bar {
-    position: absolute;
-    transform: none;
-    left: 0;
+    max-width: 800px;
+    border-radius: var(--radius-lg);
+    bottom: 20px;
   }
 }
 
