@@ -13,13 +13,21 @@ interface AddExpenseModalProps {
   }) => void;
 }
 
-const CATEGORIES = [
+const EXPENSE_CATEGORIES = [
   { id: "Food & Dining", label: "Food & Dining", icon: "🍽️" },
   { id: "Transport", label: "Transport", icon: "🚗" },
   { id: "Shopping", label: "Shopping", icon: "🛍️" },
   { id: "Bills & Utilities", label: "Bills & Utilities", icon: "⚡" },
   { id: "Entertainment", label: "Entertainment", icon: "🎬" },
   { id: "Health", label: "Health", icon: "🏥" },
+];
+
+const INCOME_CATEGORIES = [
+  { id: "Salary", label: "Salary", icon: "💼" },
+  { id: "Savings", label: "Savings", icon: "🏦" },
+  { id: "Tabung Haji", label: "Tabung Haji", icon: "🕌" },
+  { id: "ASB", label: "ASB", icon: "📈" },
+  { id: "Unit Trust", label: "Unit Trust", icon: "📊" },
 ];
 
 const PAYMENT_METHODS = ["Cash", "QR", "Card", "Transfer"];
@@ -35,6 +43,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [selectedPayment, setSelectedPayment] = useState("Cash");
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [note, setNote] = useState("");
+
+  const activeCategories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+
+  const handleTypeChange = (newType: "expense" | "income") => {
+    setType(newType);
+    setSelectedCategory(newType === "expense" ? "Food & Dining" : "Salary");
+  };
 
   if (!isOpen) return null;
 
@@ -70,14 +85,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           <button
             className={`pill-btn ${type === "expense" ? "active" : ""}`}
             style={{ flex: 1, padding: "8px 0", textAlign: "center", color: type === "expense" ? "#ef4444" : undefined }}
-            onClick={() => setType("expense")}
+            onClick={() => handleTypeChange("expense")}
           >
             Expense
           </button>
           <button
             className={`pill-btn ${type === "income" ? "active" : ""}`}
             style={{ flex: 1, padding: "8px 0", textAlign: "center", color: type === "income" ? "#10b981" : undefined }}
-            onClick={() => setType("income")}
+            onClick={() => handleTypeChange("income")}
           >
             Income
           </button>
@@ -109,7 +124,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         {/* Category Picker */}
         <div className="hero-eyebrow" style={{ marginBottom: 10 }}>CATEGORY</div>
         <div className="category-scroll-row">
-          {CATEGORIES.map((cat) => (
+          {activeCategories.map((cat) => (
             <button
               key={cat.id}
               className={`category-item ${selectedCategory === cat.id ? "active" : ""}`}
