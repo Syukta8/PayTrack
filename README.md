@@ -123,3 +123,12 @@ VITE_DEMO_MODE=false
 | `npm install` | Installs all packages needed to run PayTrack |
 | `npm run dev` | Starts the app on your computer (`http://localhost:5173`) |
 | `npm run build` | Builds the project for production deployment |
+
+---
+
+## ❤️ Support & Donations
+
+If you find PayTrack helpful and would like to support its development, consider buying me a coffee!
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/fixito)
+
