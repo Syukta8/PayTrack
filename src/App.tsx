@@ -323,11 +323,8 @@ export default function App() {
               isOpen={isQuickActionsOpen}
               onClose={() => setIsQuickActionsOpen(false)}
               onOpenAddTransaction={() => setIsAddModalOpen(true)}
-              onOpenSetBudget={() => {
-                setActiveTab("bills");
-              }}
-              onOpenBNPLModal={() => {
-                setActiveTab("maintenance");
+              onOpenScanReceipt={() => {
+                alert("Receipt scanning via camera/file upload feature requested!");
               }}
             />
 
