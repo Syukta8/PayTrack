@@ -9,6 +9,8 @@ import { HomeDashboardView } from "./components/HomeDashboardView";
 import { ReceiptDetailsView } from "./components/ReceiptDetailsView";
 import { AddExpenseModal } from "./components/AddExpenseModal";
 import { QuickActionsModal } from "./components/QuickActionsModal";
+import { BillsView } from "./components/BillsView";
+import { MaintenanceView } from "./components/MaintenanceView";
 import type { Transaction } from "./model/types";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -147,6 +149,9 @@ export default function App() {
   }
 
   const transactions = vm.data ? vm.data.transactions : [];
+  const bills = vm.data ? vm.data.bills : [];
+  const maintenance = vm.data ? vm.data.maintenance : [];
+  const carInfo = vm.data ? vm.data.carInfo : { id: "", currentMileage: 0, updatedAt: "" };
 
   return (
     <div className="app-viewport">
@@ -162,6 +167,49 @@ export default function App() {
               <HomeDashboardView
                 transactions={transactions}
                 onSelectReceipt={setSelectedReceipt}
+              />
+            )}
+
+            {activeTab === "bills" && (
+              <BillsView
+                bills={bills}
+                onMarkPaid={async (billId) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.markBillPaid(billId);
+                  await vm.reload();
+                }}
+                onAddBill={async (billInput) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.addBill(billInput);
+                  await vm.reload();
+                }}
+                onDeleteBill={async (billId) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.deleteBill(billId);
+                  await vm.reload();
+                }}
+              />
+            )}
+
+            {activeTab === "maintenance" && (
+              <MaintenanceView
+                maintenance={maintenance}
+                carInfo={carInfo}
+                onSetMileage={async (mileage) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.setMileage(mileage);
+                  await vm.reload();
+                }}
+                onAddMaintenance={async (itemInput) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.addMaintenance(itemInput);
+                  await vm.reload();
+                }}
+                onMarkDone={async (itemId, cost) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.markMaintenanceDone(itemId, { cost });
+                  await vm.reload();
+                }}
               />
             )}
 
@@ -210,7 +258,6 @@ export default function App() {
               </main>
             )}
 
-            {/* 3-Item Bottom Nav Bar with FAB (+) */}
             <BottomNav
               activeTab={activeTab}
               onTabChange={setActiveTab}
@@ -222,8 +269,12 @@ export default function App() {
               isOpen={isQuickActionsOpen}
               onClose={() => setIsQuickActionsOpen(false)}
               onOpenAddTransaction={() => setIsAddModalOpen(true)}
-              onOpenSetBudget={() => alert("Set Budget modal option chosen")}
-              onOpenBNPLModal={() => alert("Scan Receipt / Loan option chosen")}
+              onOpenSetBudget={() => {
+                setActiveTab("bills");
+              }}
+              onOpenBNPLModal={() => {
+                setActiveTab("maintenance");
+              }}
             />
 
             {/* Add Expense Modal Drawer */}
