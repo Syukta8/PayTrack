@@ -64,6 +64,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       date,
       note,
     });
+    // Reset state values after saving
+    setAmountStr("0.00");
+    setSelectedCategory(type === "expense" ? "Food & Dining" : "Salary");
+    setSelectedPayment("Cash");
+    setNote("");
     onClose();
   };
 
