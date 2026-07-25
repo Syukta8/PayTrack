@@ -7,3 +7,7 @@ Financial-Tracker/
 .firebase/
 firebase-debug.log
 
+# Private AI Agent configuration & instructions
+AGENTS.md
+.agents/
+.claude/
