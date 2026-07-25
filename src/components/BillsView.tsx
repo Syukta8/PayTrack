@@ -22,7 +22,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
 }) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("Bills & Utilities");
+  const category = "Bills & Utilities";
   const [amountStr, setAmountStr] = useState("");
   const [dueDayStr, setDueDayStr] = useState("1");
   const [recurrence, setRecurrence] = useState<Recurrence>("monthly");
@@ -158,15 +158,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 onChange={(e) => setName(e.target.value)}
               />
 
-              <div className="hero-eyebrow" style={{ marginTop: 8 }}>CATEGORY</div>
-              <input
-                type="text"
-                placeholder="Bills & Utilities"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-              />
-
-              <div className="hero-eyebrow" style={{ marginTop: 8 }}>AMOUNT (RM)</div>
+              <div className="hero-eyebrow" style={{ marginTop: 14 }}>AMOUNT (RM)</div>
               <input
                 type="number"
                 step="0.01"
@@ -175,20 +167,39 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 onChange={(e) => setAmountStr(e.target.value)}
               />
 
-              <div className="hero-eyebrow" style={{ marginTop: 8 }}>DUE DAY OF MONTH</div>
-              <input
-                type="number"
-                min="1"
-                max="31"
-                value={dueDayStr}
-                onChange={(e) => setDueDayStr(e.target.value)}
-              />
+              <div className="hero-eyebrow" style={{ marginTop: 14 }}>DUE DAY OF MONTH</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, margin: "8px 0 14px", padding: 8, background: "var(--bg-subtle)", borderRadius: 12 }}>
+                {Array.from({ length: 31 }, (_, i) => {
+                  const dayNum = i + 1;
+                  const isSelected = parseInt(dueDayStr, 10) === dayNum;
+                  return (
+                    <button
+                      key={dayNum}
+                      type="button"
+                      onClick={() => setDueDayStr(String(dayNum))}
+                      style={{
+                        padding: "6px 0",
+                        fontSize: "0.78rem",
+                        fontWeight: isSelected ? 800 : 500,
+                        borderRadius: 8,
+                        backgroundColor: isSelected ? "#0f172a" : "transparent",
+                        color: isSelected ? "#ffffff" : "var(--text-main)",
+                        border: isSelected ? "none" : "1px solid transparent",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {dayNum}
+                    </button>
+                  );
+                })}
+              </div>
 
               <div className="hero-eyebrow" style={{ marginTop: 8 }}>RECURRENCE</div>
               <div className="pill-options-row" style={{ marginBottom: 0 }}>
                 {(["monthly", "weekly", "yearly"] as Recurrence[]).map((r) => (
                   <button
                     key={r}
+                    type="button"
                     className={`opt-pill ${recurrence === r ? "active" : ""}`}
                     onClick={() => setRecurrence(r)}
                   >
