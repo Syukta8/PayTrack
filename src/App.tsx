@@ -96,55 +96,104 @@ export default function App() {
     }
   };
 
-  if (authLoading) return <main style={{ padding: 20 }}>Loading…</main>;
+  if (authLoading) {
+    return (
+      <div className="app-viewport" style={{ alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-muted)" }}>Loading PayTrack…</div>
+      </div>
+    );
+  }
 
   if (configurationError && !vm.isDemo) {
     return (
-      <main className="auth">
-        <h1>Configure Firebase first</h1>
-        <p>{configurationError}</p>
-      </main>
+      <div className="app-viewport" style={{ alignItems: "center", justifyContent: "center" }}>
+        <div className="section-card" style={{ maxWidth: 460, padding: 32, textAlign: "center" }}>
+          <div style={{ fontSize: "2rem", marginBottom: 12 }}>⚙️</div>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 8 }}>Configure Firebase First</h2>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: 20 }}>
+            {configurationError}
+          </p>
+        </div>
+      </div>
     );
   }
 
   if (!user && !vm.isDemo) {
     return (
-      <main className="auth">
-        <h1>PayTrack</h1>
-        <p>Your private Google Sheet is your database.</p>
-        <button onClick={() => void signIn()}>Sign in with Google</button>
-      </main>
+      <div className="app-viewport" style={{ alignItems: "center", justifyContent: "center" }}>
+        <div className="section-card" style={{ maxWidth: 440, padding: 36, textAlign: "center", width: "90%" }}>
+          <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>💰</div>
+          <h1 style={{ fontSize: "1.6rem", fontWeight: 800, marginBottom: 8 }}>Welcome to PayTrack</h1>
+          <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.6 }}>
+            Your private Google Sheet is your database. Sign in to sync and track all your income and expenses securely.
+          </p>
+          <button className="primary-dark-btn" onClick={() => void signIn()}>
+            Sign in with Google
+          </button>
+        </div>
+      </div>
     );
   }
 
   if (!sheetsAccessToken && !vm.isDemo) {
     return (
-      <main className="auth">
-        <h1>Sheets access needed</h1>
-        <p>Sign in again and approve Google Sheets access to connect your private workbook.</p>
-        <button onClick={() => void signIn()}>Grant Sheets access</button>
-        <button className="secondary" onClick={() => void signOut()}>Sign out</button>
-      </main>
+      <div className="app-viewport" style={{ alignItems: "center", justifyContent: "center" }}>
+        <div className="section-card" style={{ maxWidth: 460, padding: 36, textAlign: "center", width: "90%" }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", backgroundColor: "var(--badge-tax-bg)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+            <svg width="28" height="28" fill="none" stroke="var(--badge-tax-text)" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: "1.4rem", fontWeight: 800, marginBottom: 8 }}>Sheets Access Needed</h2>
+          <p style={{ fontSize: "0.88rem", color: "var(--text-muted)", marginBottom: 24, lineHeight: 1.6 }}>
+            Sign in again and grant permission to connect your private Google Sheets database to PayTrack.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button className="primary-dark-btn" onClick={() => void signIn()}>
+              Grant Sheets Access
+            </button>
+            <button className="pill-btn" style={{ padding: "12px", textAlign: "center" }} onClick={() => void signOut()}>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (!vm.spreadsheetId && !vm.isDemo) {
     return (
-      <main className="auth">
-        <h1>Connect your private Sheet</h1>
-        <p>Create a blank Google Sheet owned by {user?.email}, paste its link below, then initialize its PayTrack tabs.</p>
-        <form onSubmit={connect}>
-          <input
-            aria-label="Google Sheets link"
-            value={sheetLink}
-            onChange={(event) => setSheetLink(event.target.value)}
-            placeholder="https://docs.google.com/spreadsheets/d/..."
-            required
-          />
-          <button disabled={initializing}>{initializing ? "Initializing…" : "Connect and initialize"}</button>
-        </form>
-        {actionError && <p className="error">{actionError}</p>}
-      </main>
+      <div className="app-viewport" style={{ alignItems: "center", justifyContent: "center" }}>
+        <div className="section-card" style={{ maxWidth: 460, padding: 36, width: "90%" }}>
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: 8 }}>📊</div>
+            <h2 style={{ fontSize: "1.4rem", fontWeight: 800, marginBottom: 6 }}>Connect Your Google Sheet</h2>
+            <p style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
+              Create a blank Google Sheet owned by <strong>{user?.email}</strong>, paste its link below, then initialize.
+            </p>
+          </div>
+
+          <form onSubmit={connect} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="search-box-card" style={{ margin: 0 }}>
+              <input
+                aria-label="Google Sheets link"
+                value={sheetLink}
+                onChange={(event) => setSheetLink(event.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                required
+              />
+            </div>
+            <button className="primary-dark-btn" disabled={initializing}>
+              {initializing ? "Connecting & Initializing…" : "Connect and Initialize"}
+            </button>
+          </form>
+          {actionError && (
+            <div style={{ color: "#ef4444", fontSize: "0.8rem", marginTop: 12, textAlign: "center" }}>
+              {actionError}
+            </div>
+          )}
+        </div>
+      </div>
     );
   }
 
