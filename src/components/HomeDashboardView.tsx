@@ -31,14 +31,41 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
     .filter((t) => t.type === "expense")
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Mock rhythm line data matching reference curve
-  const rhythmTrendData = [
-    { day: 1, val: 20 },
-    { day: 5, val: 90 },
-    { day: 9, val: 240 },
-    { day: 13, val: 40 },
-    { day: 17, val: 80 },
-  ];
+  // Calculate dynamic daily spending trend for AreaChart from Google Sheet transactions
+  const rhythmTrendMap = new Map<number, number>();
+  const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+
+  let dynamicTax = 0;
+  let dynamicServiceCharge = 0;
+
+  transactions.forEach((t) => {
+    if (t.type === "expense") {
+      // Dynamic Tax (6% for Food & Dining or Shopping)
+      if (t.category === "Food & Dining" || t.category === "Shopping") {
+        dynamicTax += t.amount * 0.06;
+      }
+      // Dynamic Service Charge (4% for Food & Dining)
+      if (t.category === "Food & Dining") {
+        dynamicServiceCharge += t.amount * 0.04;
+      }
+
+      if (t.date.startsWith(currentMonthPrefix)) {
+        const day = parseInt(t.date.slice(-2), 10);
+        if (!isNaN(day)) {
+          rhythmTrendMap.set(day, (rhythmTrendMap.get(day) || 0) + t.amount);
+        }
+      }
+    }
+  });
+
+  const daysInMonth = new Date().getDate();
+  const rhythmTrendData = Array.from({ length: daysInMonth }, (_, index) => {
+    const dayNum = index + 1;
+    return {
+      day: dayNum,
+      val: rhythmTrendMap.get(dayNum) || 0,
+    };
+  });
 
   // Spending by category distribution for Pie Chart
   const categoryMap = new Map<string, number>();
@@ -59,6 +86,9 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
       { name: "Dining & Takeout", value: 38.0 }
     );
   }
+
+  const firstDayStr = `${currentMonthPrefix}-01`;
+  const lastDayStr = `${currentMonthPrefix}-${String(daysInMonth).padStart(2, "0")}`;
 
   return (
     <div>
@@ -83,12 +113,12 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
         </div>
 
         <div className="badge-row">
-          <span className="badge-pill tax">Tax: RM5.49</span>
-          <span className="badge-pill service">Service Charge: RM6.16</span>
+          <span className="badge-pill tax">Tax: RM{dynamicTax.toFixed(2)}</span>
+          <span className="badge-pill service">Service Charge: RM{dynamicServiceCharge.toFixed(2)}</span>
         </div>
 
         <div className="date-range-sub">
-          Showing data for 01 Oct - 17 Oct
+          Showing data for {firstDayStr} - {lastDayStr}
         </div>
 
         {/* Smooth Curved Line Graph */}
