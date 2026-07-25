@@ -122,7 +122,9 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
               <tbody>
                 <tr>
                   <td>Subtotal</td>
-                  <td style={{ textAlign: "right", fontWeight: 700 }}>RM43.70</td>
+                  <td style={{ textAlign: "right", fontWeight: 700 }}>
+                    RM{(receipt.amount * (receipt.category === "Food & Dining" || receipt.category === "Shopping" ? 0.94 : 1)).toFixed(2)}
+                  </td>
                 </tr>
                 <tr>
                   <td>Discounts</td>
@@ -131,15 +133,17 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
                 <tr>
                   <td>Service Charge</td>
                   <td style={{ textAlign: "right", fontWeight: 700, color: "var(--badge-tax-text)" }}>
-                    RM4.37
+                    RM{(receipt.amount * 0.04).toFixed(2)}
                   </td>
                 </tr>
-                <tr>
-                  <td>Tax</td>
-                  <td style={{ textAlign: "right", fontWeight: 700, color: "var(--badge-tax-text)" }}>
-                    RM2.62
-                  </td>
-                </tr>
+                {(receipt.category === "Food & Dining" || receipt.category === "Shopping") && (
+                  <tr>
+                    <td>Tax (6%)</td>
+                    <td style={{ textAlign: "right", fontWeight: 700, color: "var(--badge-tax-text)" }}>
+                      RM{(receipt.amount * 0.06).toFixed(2)}
+                    </td>
+                  </tr>
+                )}
                 <tr>
                   <td>Rounding</td>
                   <td style={{ textAlign: "right", fontWeight: 700 }}>RM0.01</td>

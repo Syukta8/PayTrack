@@ -185,24 +185,40 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
           </div>
 
           {filteredTransactions.length > 0 ? (
-            filteredTransactions.map((tx) => (
-              <div
-                className="receipt-row"
-                key={tx.id}
-                onClick={() => onSelectReceipt(tx)}
-              >
-                <div>
-                  <div className="receipt-date">{tx.date}</div>
-                  <div className="receipt-title">{tx.description || tx.category}</div>
-                  <div className="receipt-item-count">4 items</div>
-                </div>
+            filteredTransactions.map((tx) => {
+              const isEligibleCategory =
+                tx.category === "Food & Dining" ||
+                tx.category === "Shopping" ||
+                tx.category === "Entertainment";
+              const isTaxableCategory =
+                tx.category === "Food & Dining" || tx.category === "Shopping";
 
-                <div className="receipt-amount-box">
-                  <div className="receipt-amount">RM{tx.amount.toFixed(2)}</div>
-                  <div className="receipt-tax-sub">RM{(tx.amount * 0.06).toFixed(2)}</div>
+              return (
+                <div
+                  className="receipt-row"
+                  key={tx.id}
+                  onClick={() => {
+                    if (isEligibleCategory) {
+                      onSelectReceipt(tx);
+                    }
+                  }}
+                  style={{ cursor: isEligibleCategory ? "pointer" : "default" }}
+                >
+                  <div>
+                    <div className="receipt-date">{tx.date}</div>
+                    <div className="receipt-title">{tx.description || tx.category}</div>
+                    {isEligibleCategory && <div className="receipt-item-count">4 items</div>}
+                  </div>
+
+                  <div className="receipt-amount-box">
+                    <div className="receipt-amount">RM{tx.amount.toFixed(2)}</div>
+                    {isTaxableCategory && (
+                      <div className="receipt-tax-sub">RM{(tx.amount * 0.06).toFixed(2)}</div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-muted)" }}>
               No recent receipts recorded.

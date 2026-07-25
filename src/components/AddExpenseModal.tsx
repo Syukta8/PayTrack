@@ -15,6 +15,7 @@ interface AddExpenseModalProps {
 
 const EXPENSE_CATEGORIES = [
   { id: "Food & Dining", label: "Food & Dining", icon: "🍽️" },
+  { id: "Personal", label: "Personal", icon: "👤" },
   { id: "Transport", label: "Transport", icon: "🚗" },
   { id: "Shopping", label: "Shopping", icon: "🛍️" },
   { id: "Bills & Utilities", label: "Bills & Utilities", icon: "⚡" },
