@@ -184,7 +184,9 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
           if (!items || items.length === 0) return null;
           const itemsSum = items.reduce((sum, item) => sum + item.totalPrice, 0);
           const currentAmount = parseFloat(amountStr) || 0;
-          const hasMismatch = Math.abs(itemsSum - currentAmount) > 0.05;
+          const feeRate = selectedPayment === "SPayLater" && spayTenure > 1 ? 0.015 * spayTenure : 0;
+          const expectedTotal = itemsSum * (1 + feeRate);
+          const hasMismatch = Math.abs(expectedTotal - currentAmount) > 0.10 && Math.abs(itemsSum - currentAmount) > 0.10;
 
           if (hasMismatch) {
             return (
@@ -193,7 +195,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                   <span>⚠️ Subitem Sum Mismatch Detected</span>
                 </div>
                 <div style={{ fontSize: "0.74rem", color: "#9a3412", marginBottom: 8 }}>
-                  Items sum (RM{itemsSum.toFixed(2)}) differs from entered amount (RM{currentAmount.toFixed(2)}).
+                  Receipt items sum (RM{itemsSum.toFixed(2)}) differs from entered amount (RM{currentAmount.toFixed(2)}).
                 </div>
                 <button
                   type="button"
@@ -210,7 +212,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     boxShadow: "0 2px 6px rgba(234, 88, 12, 0.3)",
                   }}
                 >
-                  ✨ Sync Amount to Items Total (RM{itemsSum.toFixed(2)})
+                  ✨ Sync Base Amount to Receipt Items (RM{itemsSum.toFixed(2)})
                 </button>
               </div>
             );
@@ -218,7 +220,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
           return (
             <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #86efac", padding: "8px 12px", borderRadius: 12, marginBottom: 20, textAlign: "center", fontSize: "0.78rem", fontWeight: 700, color: "#166534" }}>
-              ✅ Subitems Verified — {items.length} items match entered amount (RM{itemsSum.toFixed(2)})
+              ✅ Subitems Verified — {items.length} items (RM{itemsSum.toFixed(2)}) {feeRate > 0 ? `+ SPayLater ${spayTenure}M (+${(feeRate * 100).toFixed(1)}%)` : ""} match total!
             </div>
           );
         })()}
