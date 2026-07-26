@@ -10,6 +10,8 @@ interface AddExpenseModalProps {
     paymentMethod: string;
     date: string;
     note: string;
+    imageUrl?: string;
+    driveUrl?: string;
   }) => void;
   initialData?: {
     amount?: number;
@@ -17,6 +19,8 @@ interface AddExpenseModalProps {
     description?: string;
     date?: string;
     note?: string;
+    imageUrl?: string;
+    driveUrl?: string;
   } | null;
 }
 
@@ -53,6 +57,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [spayTenure, setSpayTenure] = useState<1 | 3 | 6 | 12>(1);
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [note, setNote] = useState("");
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [driveUrl, setDriveUrl] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (initialData) {
@@ -63,6 +69,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       if (initialData.description || initialData.note) {
         setNote(initialData.description || initialData.note || "");
       }
+      setImageUrl(initialData.imageUrl);
+      setDriveUrl(initialData.driveUrl);
+    } else {
+      setImageUrl(undefined);
+      setDriveUrl(undefined);
     }
   }, [initialData]);
 
@@ -91,6 +102,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       paymentMethod: selectedPayment,
       date,
       note: finalNote,
+      imageUrl,
+      driveUrl,
     });
     // Reset state values after saving
     setAmountStr("0.00");
@@ -98,6 +111,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     setSelectedPayment("Cash");
     setSpayTenure(1);
     setNote("");
+    setImageUrl(undefined);
+    setDriveUrl(undefined);
     onClose();
   };
 
