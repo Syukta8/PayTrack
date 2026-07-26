@@ -244,8 +244,11 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "var(--text-main)" }}>
                       {item.description || "SPayLater Purchase"}
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
-                      {item.date} · {tenureMonths} Months Tenure ({item.category})
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>{item.date} · {tenureMonths}M Tenure ({item.category})</span>
+                      <span style={{ fontSize: "0.65rem", padding: "2px 6px", borderRadius: 4, backgroundColor: tenureMonths > 1 ? "#ffedd5" : "#dcfce7", color: tenureMonths > 1 ? "#ea580c" : "#166534", fontWeight: 700 }}>
+                        {tenureMonths > 1 ? `1.5%/mo (${(tenureMonths * 1.5).toFixed(1)}% total fee)` : "0% Fee"}
+                      </span>
                     </div>
                   </div>
 

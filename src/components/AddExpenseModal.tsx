@@ -76,14 +76,17 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   if (!isOpen) return null;
 
   const handleSave = () => {
-    const amount = parseFloat(amountStr) || 0;
+    const rawAmount = parseFloat(amountStr) || 0;
+    const feeRate = selectedPayment === "SPayLater" && spayTenure > 1 ? 0.015 * spayTenure : 0;
+    const totalAmount = rawAmount * (1 + feeRate);
+
     const finalNote = selectedPayment === "SPayLater" 
-      ? `${note ? `${note} ` : ""}(SPayLater ${spayTenure}M)`
+      ? `${note ? `${note} ` : ""}(SPayLater ${spayTenure}M${spayTenure > 1 ? " +1.5%/mo fee" : ""})`
       : note;
 
     onSubmit({
       type,
-      amount,
+      amount: selectedPayment === "SPayLater" ? totalAmount : rawAmount,
       category: selectedCategory,
       paymentMethod: selectedPayment,
       date,
@@ -186,11 +189,16 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
         {selectedPayment === "SPayLater" && (
           <div style={{ marginTop: 12, padding: "12px", background: "var(--bg-subtle)", borderRadius: 12 }}>
-            <div className="hero-eyebrow" style={{ marginBottom: 8 }}>SPAYLATER TENURE</div>
+            <div className="hero-eyebrow" style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>SPAYLATER TENURE</span>
+              <span style={{ color: "#ea580c", fontWeight: 700 }}>1.5% fee/month (3M, 6M, 12M)</span>
+            </div>
             <div className="pill-options-row" style={{ marginBottom: 0 }}>
               {([1, 3, 6, 12] as const).map((months) => {
-                const totalAmt = parseFloat(amountStr) || 0;
-                const monthlyAmt = totalAmt > 0 ? (totalAmt / months).toFixed(2) : "0.00";
+                const principal = parseFloat(amountStr) || 0;
+                const feeRate = months > 1 ? 0.015 * months : 0;
+                const totalWithFee = principal * (1 + feeRate);
+                const monthlyAmt = principal > 0 ? (totalWithFee / months).toFixed(2) : "0.00";
                 return (
                   <button
                     key={months}
@@ -200,7 +208,10 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
                     style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "6px 12px" }}
                   >
                     <span>{months} {months === 1 ? "Month" : "Months"}</span>
-                    <span style={{ fontSize: "0.68rem", opacity: 0.8 }}>RM{monthlyAmt}/mo</span>
+                    <span style={{ fontSize: "0.68rem", fontWeight: 700 }}>RM{monthlyAmt}/mo</span>
+                    <span style={{ fontSize: "0.6rem", opacity: 0.75 }}>
+                      {months === 1 ? "0% Fee" : `+${(feeRate * 100).toFixed(1)}% Fee`}
+                    </span>
                   </button>
                 );
               })}
