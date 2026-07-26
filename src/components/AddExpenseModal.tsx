@@ -97,9 +97,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     const feeRate = selectedPayment === "SPayLater" && spayTenure > 1 ? 0.015 * spayTenure : 0;
     const totalAmount = rawAmount * (1 + feeRate);
 
-    const finalNote = selectedPayment === "SPayLater" 
-      ? `${note ? `${note} ` : ""}(SPayLater ${spayTenure}M${spayTenure > 1 ? " +1.5%/mo fee" : ""})`
-      : note;
+    const finalNote = note;
 
     onSubmit({
       type,
