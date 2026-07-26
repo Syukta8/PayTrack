@@ -118,7 +118,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 key={item.bill.id}
                 style={{
                   display: "flex",
-                  justify-content: "space-between",
+                  justifyContent: "space-between",
                   alignItems: "center",
                   padding: "14px 0",
                   borderBottom: "1px solid var(--border-subtle)",
