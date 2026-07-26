@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis } from "recharts";
 import type { Transaction } from "../model/types";
 
 interface ReceiptDetailsViewProps {
