@@ -7,8 +7,10 @@ export interface RowRecord<T> { rowNumber: number; data: T; }
 export interface SheetsStore {
   list<K extends SheetEntity>(entity: K): Promise<RowRecord<SheetRecord<K>>[]>;
   append<K extends SheetEntity>(entity: K, data: SheetRecord<K>): Promise<void>;
+  appendMany<K extends SheetEntity>(entity: K, data: SheetRecord<K>[]): Promise<void>;
   update<K extends SheetEntity>(entity: K, rowNumber: number, data: SheetRecord<K>): Promise<void>;
   delete(entity: SheetEntity, rowNumber: number): Promise<void>;
+  deleteMany(entity: SheetEntity, rowNumbers: number[]): Promise<void>;
 }
 
 /** Extracts the spreadsheet identifier from a Google Sheets URL or accepts a raw identifier. */
@@ -59,10 +61,16 @@ export class SheetsRepository implements SheetsStore {
 
   /** Appends a typed record to its entity tab. */
   public async append<K extends SheetEntity>(entity: K, data: SheetRecord<K>): Promise<void> {
+    await this.appendMany(entity, [data]);
+  }
+
+  /** Appends many records in a single request, keeping bulk writes off the request budget. */
+  public async appendMany<K extends SheetEntity>(entity: K, data: SheetRecord<K>[]): Promise<void> {
+    if (!data.length) return;
     const definition = SHEETS[entity];
-    const values = definition.columns.map(([key]) => (data as unknown as Record<string, unknown>)[String(key)] ?? "");
+    const values = data.map((record) => definition.columns.map(([key]) => (record as unknown as Record<string, unknown>)[String(key)] ?? ""));
     await this.request(`/values/${encodeURIComponent(`${definition.tab}!A1`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`, {
-      method: "POST", body: JSON.stringify({ values: [values] }),
+      method: "POST", body: JSON.stringify({ values }),
     });
   }
 
@@ -77,13 +85,23 @@ export class SheetsRepository implements SheetsStore {
 
   /** Deletes one data row while retaining the entity's header row. */
   public async delete(entity: SheetEntity, rowNumber: number): Promise<void> {
+    await this.deleteMany(entity, [rowNumber]);
+  }
+
+  /** Deletes several rows in one request. Rows are removed bottom-up so that the earlier
+   * row numbers stay valid as later ones disappear. */
+  public async deleteMany(entity: SheetEntity, rowNumbers: number[]): Promise<void> {
+    const targets = [...new Set(rowNumbers)].sort((a, b) => b - a);
+    if (!targets.length) return;
     const tab = SHEETS[entity].tab;
     const metadata = await this.request<{ sheets?: { properties?: { title?: string; sheetId?: number } }[] }>("?fields=sheets.properties(title,sheetId)");
     const sheetId = metadata.sheets?.find((sheet) => sheet.properties?.title === tab)?.properties?.sheetId;
     if (sheetId === undefined) throw new Error(`The ${tab} tab does not exist. Initialize the template first.`);
     await this.request(":batchUpdate", {
       method: "POST",
-      body: JSON.stringify({ requests: [{ deleteDimension: { range: { sheetId, dimension: "ROWS", startIndex: rowNumber - 1, endIndex: rowNumber } } }] }),
+      body: JSON.stringify({
+        requests: targets.map((rowNumber) => ({ deleteDimension: { range: { sheetId, dimension: "ROWS", startIndex: rowNumber - 1, endIndex: rowNumber } } })),
+      }),
     });
   }
 

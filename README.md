@@ -112,7 +112,25 @@ VITE_DEMO_MODE=false
 5. Click **Sign in with Google** and log in.
 6. When prompted on screen, paste your Google Sheet link into the box and click **Connect and initialize**.
 
-🎉 **Congratulations!** PayTrack will automatically create your database tabs (`Transactions`, `RecurringBills`, `Budgets`, etc.) inside your Google Sheet. Every time you log an expense, it will save directly to your sheet!
+🎉 **Congratulations!** PayTrack will automatically create its database tabs inside your Google Sheet. Every time you log an expense, it will save directly to your sheet!
+
+### 📑 The tabs PayTrack creates
+
+Row 1 of each tab is a header. Columns are read **by position**, so don't reorder or delete
+them — new columns are only ever added at the end, and PayTrack extends an older header
+automatically when you reconnect.
+
+| Tab | Columns |
+| :--- | :--- |
+| `Transactions` | id, date, type, category, amount, description, paymentType, remarks, createdAt, tax, serviceCharge |
+| `ReceiptItems` | id, transactionId, name, qty, unitPrice, totalPrice, category |
+| `RecurringBills` | id, name, amount, category, dueDay, recurrence, lastPaidPeriod, active |
+| `MaintenanceItems` | id, name, notes, intervalMonths, intervalKm, lastServiceDate, lastServiceMileage, active |
+| `CarInfo` | id, currentMileage, updatedAt |
+| `ServiceHistory` | id, date, mileage, description, createdAt |
+
+Scanned receipt line items are stored in `ReceiptItems`, linked to their parent row by
+`transactionId`, so they stay with your data rather than only in one browser.
 
 ---
 

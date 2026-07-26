@@ -1,7 +1,9 @@
 import type { ReceiptItem } from "./types";
 
-/** IndexedDB storage helper for high-resolution receipt images & parsed itemized subitems.
- * Keeps giant strings out of Google Sheets cells to prevent 400 Bad Request limits.
+/** IndexedDB cache for high-resolution receipt images, keeping giant base64 strings out of
+ * Google Sheets cells. Line items are NOT stored here any more â they live in the
+ * ReceiptItems tab so they survive a cache clear or a different device; the items store is
+ * retained read-only to recover data written by earlier versions.
  */
 const DB_NAME = "PayTrackImageStore";
 const STORE_NAME = "receipt_images";
@@ -55,21 +57,8 @@ export async function getReceiptImage(id: string): Promise<string | null> {
   }
 }
 
-export async function saveReceiptItems(id: string, items: ReceiptItem[]): Promise<void> {
-  if (!id || !items || !items.length) return;
-  try {
-    const db = await openDB();
-    const tx = db.transaction(ITEMS_STORE_NAME, "readwrite");
-    tx.objectStore(ITEMS_STORE_NAME).put(items, id);
-    await new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch (err) {
-    console.error("Failed to save receipt items to IndexedDB:", err);
-  }
-}
-
+/** Legacy read path only: line items are written to the ReceiptItems sheet tab now, so this
+ * exists to recover items stored on this device by earlier versions. Nothing writes here. */
 export async function getReceiptItems(id: string): Promise<ReceiptItem[] | null> {
   if (!id) return null;
   try {

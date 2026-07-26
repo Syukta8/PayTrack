@@ -44,6 +44,18 @@ export interface ReceiptItem {
   category?: string;
 }
 
+/** A ReceiptItem as stored in its own sheet tab, linked to its parent transaction.
+ * The sheet is the authority for line items; IndexedDB only caches receipt images. */
+export interface ReceiptItemRecord {
+  id: string;
+  transactionId: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  totalPrice: number;
+  category: string;
+}
+
 export interface Transaction {
   id: string;
   date: string;

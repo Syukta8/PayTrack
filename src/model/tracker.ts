@@ -1,6 +1,6 @@
 import { billStatus, maintenanceStatus, periodKey } from "./domain";
 import type { SheetsStore, RowRecord } from "./sheets";
-import type { BillStatus, CarInfo, DashboardSummary, MaintenanceItem, MaintenanceStatus, RecurringBill, ServiceRecord, Transaction } from "./types";
+import type { BillStatus, CarInfo, DashboardSummary, MaintenanceItem, MaintenanceStatus, ReceiptItem, ReceiptItemRecord, RecurringBill, ServiceRecord, Transaction } from "./types";
 
 const today = (): string => new Date().toISOString().slice(0, 10);
 const id = (): string => crypto.randomUUID();
@@ -24,10 +24,19 @@ export class Tracker {
 
   /** Loads every screen's read model in parallel. */
   public async load(): Promise<TrackerData> {
-    const [transactionRows, billRows, maintenanceRows, carRows, serviceRows] = await Promise.all([
-      this.sheets.list("transactions"), this.sheets.list("bills"), this.sheets.list("maintenance"), this.sheets.list("carInfo"), this.sheets.list("serviceHistory"),
+    const [transactionRows, billRows, maintenanceRows, carRows, serviceRows, itemRows] = await Promise.all([
+      this.sheets.list("transactions"), this.sheets.list("bills"), this.sheets.list("maintenance"), this.sheets.list("carInfo"), this.sheets.list("serviceHistory"), this.sheets.list("receiptItems"),
     ]);
-    const transactions = transactionRows.map((row) => row.data).sort((a, b) => b.date.localeCompare(a.date));
+    const itemsByTransaction = new Map<string, ReceiptItem[]>();
+    itemRows.forEach(({ data }) => {
+      if (!data.transactionId) return;
+      const list = itemsByTransaction.get(data.transactionId) ?? [];
+      list.push({ id: data.id, name: data.name, qty: data.qty, unitPrice: data.unitPrice, totalPrice: data.totalPrice, category: data.category || undefined });
+      itemsByTransaction.set(data.transactionId, list);
+    });
+    const transactions = transactionRows
+      .map((row) => ({ ...row.data, items: itemsByTransaction.get(row.data.id) ?? row.data.items }))
+      .sort((a, b) => b.date.localeCompare(a.date));
     const carInfo = carRows[0]?.data ?? { id: "", currentMileage: 0, updatedAt: "" };
     const bills = billRows.map((row) => billStatus(row.data)).sort((a, b) => a.daysUntilDue - b.daysUntilDue);
     const maintenance = maintenanceRows.map((row) => maintenanceStatus(row.data, carInfo));
@@ -36,9 +45,38 @@ export class Tracker {
   }
 
   /** Adds a ledger transaction. */
-  public async addTransaction(input: Omit<Transaction, "id" | "createdAt">): Promise<string> { requireDate(input.date, "Transaction date"); requireText(input.category, "Transaction category"); requireNonNegative(input.amount, "Transaction amount"); const newId = id(); await this.sheets.append("transactions", { ...input, category: input.category.trim(), tax: input.tax ?? 0, serviceCharge: input.serviceCharge ?? 0, id: newId, createdAt: new Date().toISOString() }); return newId; }
-  /** Deletes a transaction by its stable identifier. */
-  public async deleteTransaction(transactionId: string): Promise<void> { await this.deleteById("transactions", transactionId); }
+  public async addTransaction(input: Omit<Transaction, "id" | "createdAt">): Promise<string> {
+    requireDate(input.date, "Transaction date");
+    requireText(input.category, "Transaction category");
+    requireNonNegative(input.amount, "Transaction amount");
+    const newId = id();
+    const { items, ...fields } = input;
+    await this.sheets.append("transactions", { ...fields, category: input.category.trim(), tax: input.tax ?? 0, serviceCharge: input.serviceCharge ?? 0, id: newId, createdAt: new Date().toISOString() });
+    await this.saveReceiptItems(newId, items);
+    return newId;
+  }
+
+  /** Stores a receipt's line items in their own tab so they outlive the device that scanned it. */
+  private async saveReceiptItems(transactionId: string, items: ReceiptItem[] | undefined): Promise<void> {
+    if (!items?.length) return;
+    const records: ReceiptItemRecord[] = items.map((item, index) => ({
+      id: item.id || `${transactionId}-${index}`,
+      transactionId,
+      name: item.name,
+      qty: item.qty,
+      unitPrice: item.unitPrice,
+      totalPrice: item.totalPrice,
+      category: item.category ?? "",
+    }));
+    await this.sheets.appendMany("receiptItems", records);
+  }
+
+  /** Deletes a transaction and any receipt line items belonging to it. */
+  public async deleteTransaction(transactionId: string): Promise<void> {
+    const itemRows = (await this.sheets.list("receiptItems")).filter((row) => row.data.transactionId === transactionId);
+    if (itemRows.length) await this.sheets.deleteMany("receiptItems", itemRows.map((row) => row.rowNumber));
+    await this.deleteById("transactions", transactionId);
+  }
   /** Creates an active recurring bill. */
   public async addBill(input: Omit<RecurringBill, "id" | "active" | "lastPaidPeriod">): Promise<void> { requireText(input.name, "Bill name"); requireText(input.category, "Bill category"); requireNonNegative(input.amount, "Bill amount"); const maximum = input.recurrence === "weekly" ? 7 : input.recurrence === "yearly" ? 366 : 31; if (!Number.isInteger(input.dueDay) || input.dueDay < 1 || input.dueDay > maximum) throw new Error(`Due day must be between 1 and ${maximum}.`); await this.sheets.append("bills", { ...input, name: input.name.trim(), category: input.category.trim(), id: id(), active: true, lastPaidPeriod: "" }); }
   /** Updates an existing recurring bill. */

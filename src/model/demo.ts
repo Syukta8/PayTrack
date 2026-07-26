@@ -1,7 +1,9 @@
 import type { SheetEntity, SheetRecord } from "./sheetSchema";
 import type { RowRecord, SheetsStore } from "./sheets";
 
-const KEY = "paytrack.demo.data.v4";
+// Bumped whenever the seed shape changes: stored demo data from an older shape would be
+// missing an entity array and break every read.
+const KEY = "paytrack.demo.data.v5";
 type DemoData = { [K in SheetEntity]: SheetRecord<K>[] };
 
 function id(value: string): string { return `demo-${value}`; }
@@ -53,6 +55,7 @@ function seed(): DemoData {
     bills: [{ id: id("bill-forte"), name: "Unifi Fiber", amount: 250, category: "Bills & Utilities", dueDay: 1, recurrence: "monthly" as const, lastPaidPeriod: "", active: true }],
     maintenance: [{ id: id("maintenance-oil"), name: "Engine oil", notes: "Full synthetic and oil filter", intervalMonths: 6, intervalKm: 10000, lastServiceDate: "2026-04-26", lastServiceMileage: 198203, active: true }],
     carInfo: [{ id: id("car"), currentMileage: 204974, updatedAt: "2026-08-16T00:00:00.000Z" }],
+    receiptItems: [],
     serviceHistory: [{ id: id("service-1"), date: "2025-04-26", mileage: 198203, description: "Change full synthetic and oil filter", createdAt: "2025-04-26T00:00:00.000Z" }, { id: id("service-2"), date: "2025-08-16", mileage: 204974, description: "Brake shoe, brake pads, balancing and alignment", createdAt: "2025-08-16T00:00:00.000Z" }],
   }; 
 }
@@ -63,6 +66,9 @@ export class DemoSheetsRepository implements SheetsStore {
   private write(data: DemoData): void { localStorage.setItem(KEY, JSON.stringify(data)); }
   public async list<K extends SheetEntity>(entity: K): Promise<RowRecord<SheetRecord<K>>[]> { return this.read()[entity].map((data, index) => ({ rowNumber: index + 2, data })); }
   public async append<K extends SheetEntity>(entity: K, record: SheetRecord<K>): Promise<void> { const data = this.read(); data[entity].push(record); this.write(data); }
+  public async appendMany<K extends SheetEntity>(entity: K, records: SheetRecord<K>[]): Promise<void> { if (!records.length) return; const data = this.read(); data[entity].push(...records); this.write(data); }
   public async update<K extends SheetEntity>(entity: K, rowNumber: number, record: SheetRecord<K>): Promise<void> { const data = this.read(); data[entity][rowNumber - 2] = record; this.write(data); }
   public async delete(entity: SheetEntity, rowNumber: number): Promise<void> { const data = this.read(); data[entity].splice(rowNumber - 2, 1); this.write(data); }
+  /** Splices bottom-up so the lower indices stay valid, matching the Sheets behaviour. */
+  public async deleteMany(entity: SheetEntity, rowNumbers: number[]): Promise<void> { const targets = [...new Set(rowNumbers)].sort((a, b) => b - a); if (!targets.length) return; const data = this.read(); targets.forEach((rowNumber) => data[entity].splice(rowNumber - 2, 1)); this.write(data); }
 }

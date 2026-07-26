@@ -14,7 +14,7 @@ import { MaintenanceView } from "./components/MaintenanceView";
 import { ScanReceiptModal } from "./components/ScanReceiptModal";
 import { PasteSmsModal } from "./components/PasteSmsModal";
 import { StatementReconciliationModal } from "./components/StatementReconciliationModal";
-import { saveReceiptImage, saveReceiptItems } from "./model/imageStore";
+import { saveReceiptImage } from "./model/imageStore";
 import type { Transaction, ReceiptItem } from "./model/types";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -110,14 +110,8 @@ export default function App() {
       const imgData = formData.imageUrl || scannedData?.imageUrl;
       const subitems = formData.items || scannedData?.items;
 
-      let remarksPayload = drivePath;
-      if (subitems && subitems.length > 0) {
-        const compactJson = JSON.stringify(subitems.map((i: ReceiptItem) => ({ n: i.name, q: i.qty, p: i.unitPrice, t: i.totalPrice })));
-        if (compactJson.length < 500) {
-          remarksPayload += ` | ITEMS:${compactJson}`;
-        }
-      }
-
+      // Line items live in their own sheet tab now, so they are no longer packed into
+      // remarks (where anything past ~500 characters was silently dropped).
       const createdId = await vm.tracker.addTransaction({
         date: formData.date,
         type: formData.type,
@@ -125,20 +119,17 @@ export default function App() {
         category: formData.category,
         paymentType: formData.paymentMethod,
         description: formData.note,
-        remarks: remarksPayload,
+        remarks: drivePath,
         imageUrl: drivePath,
         driveUrl: drivePath,
         tax: formData.tax ?? scannedData?.tax ?? 0,
         serviceCharge: formData.serviceCharge ?? scannedData?.serviceCharge ?? 0,
+        items: subitems,
       });
 
-      if (createdId) {
-        if (imgData) {
-          await saveReceiptImage(createdId, imgData);
-        }
-        if (subitems && subitems.length > 0) {
-          await saveReceiptItems(createdId, subitems);
-        }
+      // IndexedDB is now an image-only cache; the line items were written to the sheet above.
+      if (createdId && imgData) {
+        await saveReceiptImage(createdId, imgData);
       }
       await vm.reload();
     } catch (err) {

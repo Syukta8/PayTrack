@@ -23,12 +23,19 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
         if (isMounted && stored) setLocalImage(stored);
       });
 
+      // The sheet is the authority for line items. IndexedDB and the packed remarks payload
+      // are read only to recover receipts saved by earlier versions.
+      if (receipt.items && receipt.items.length > 0) {
+        setSubitems(receipt.items);
+        return () => {
+          isMounted = false;
+        };
+      }
+
       getReceiptItems(receipt.id).then((storedItems) => {
         if (isMounted) {
           if (storedItems && storedItems.length > 0) {
             setSubitems(storedItems);
-          } else if (receipt.items && receipt.items.length > 0) {
-            setSubitems(receipt.items);
           } else if (receipt.remarks && receipt.remarks.includes("| ITEMS:")) {
             try {
               const rawJson = receipt.remarks.split("| ITEMS:")[1]?.trim();
