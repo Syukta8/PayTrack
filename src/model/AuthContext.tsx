@@ -5,6 +5,7 @@ import type { User } from "firebase/auth";
 import { auth, firebaseConfigurationError, googleProvider } from "./firebase";
 
 const TOKEN_KEY = "paytrack.sheetsAccessToken";
+const TOKEN_TIME_KEY = "paytrack.sheetsAccessTokenTime";
 
 interface AuthContextValue {
   user: User | null;
@@ -21,7 +22,21 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sheetsAccessToken, setSheetsAccessToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY));
+  const [sheetsAccessToken, setSheetsAccessToken] = useState<string | null>(() => {
+    const token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+    const savedTime = localStorage.getItem(TOKEN_TIME_KEY);
+    if (token && savedTime) {
+      const ageMs = Date.now() - Number(savedTime);
+      // Google OAuth tokens expire in 1 hour (3600s). If token is older than 55 minutes, treat as expired.
+      if (ageMs > 55 * 60 * 1000) {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(TOKEN_TIME_KEY);
+        sessionStorage.removeItem(TOKEN_KEY);
+        return null;
+      }
+    }
+    return token;
+  });
 
   useEffect(() => {
     if (!auth) { setLoading(false); return; }
@@ -38,10 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result = await signInWithPopup(auth, googleProvider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (!credential?.accessToken) throw new Error("Google Sheets access was not granted. Please try signing in again.");
+      localStorage.setItem(TOKEN_KEY, credential.accessToken);
+      localStorage.setItem(TOKEN_TIME_KEY, String(Date.now()));
       sessionStorage.setItem(TOKEN_KEY, credential.accessToken);
       setSheetsAccessToken(credential.accessToken);
     },
     signOut: async () => {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(TOKEN_TIME_KEY);
       sessionStorage.removeItem(TOKEN_KEY);
       setSheetsAccessToken(null);
       if (auth) await firebaseSignOut(auth);
