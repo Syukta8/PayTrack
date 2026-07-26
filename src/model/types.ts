@@ -15,6 +15,8 @@ export interface Transaction {
   paymentType: string;
   remarks: string;
   createdAt: string;
+  imageUrl?: string;
+  driveUrl?: string;
 }
 
 export interface RecurringBill {

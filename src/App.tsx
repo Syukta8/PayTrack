@@ -36,6 +36,8 @@ export default function App() {
     description?: string;
     date?: string;
     note?: string;
+    imageUrl?: string;
+    driveUrl?: string;
   } | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     return (localStorage.getItem("paytrack.theme") as ThemeMode) || "system";
@@ -101,7 +103,9 @@ export default function App() {
         category: formData.category,
         paymentType: formData.paymentMethod,
         description: formData.note,
-        remarks: "",
+        remarks: scannedData?.driveUrl || "",
+        imageUrl: scannedData?.imageUrl,
+        driveUrl: scannedData?.driveUrl,
       });
       await vm.reload();
     } catch (err) {

@@ -10,6 +10,8 @@ interface ScanReceiptModalProps {
     description: string;
     date: string;
     note: string;
+    imageUrl?: string;
+    driveUrl?: string;
   }) => void;
 }
 
@@ -178,12 +180,18 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
       // Step 4: Parse financial details
       const parsed = parseReceiptText(extractedText);
 
+      const dateStr = parsed.date || new Date().toISOString().split("T")[0];
+      const receiptId = `rcpt_${Date.now().toString(36)}`;
+      const driveFolder = `PayTrack_Receipts/${dateStr.slice(0, 4)}/${dateStr.slice(5, 7)}/${receiptId}.jpg`;
+
       onReceiptScanned({
         amount: parsed.totalAmount,
         category: parsed.category,
         description: parsed.merchantName,
-        date: parsed.date,
+        date: dateStr,
         note: parsed.note,
+        imageUrl: optimizedImage || selectedImage,
+        driveUrl: `Google Drive: ${driveFolder}`,
       });
 
       handleClose();

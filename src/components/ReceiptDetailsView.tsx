@@ -198,9 +198,58 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
       )}
 
       {activeTab === "image" && (
-        <div className="section-card" style={{ marginTop: 16, textAlign: "center", padding: 40 }}>
-          <div style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
-            Receipt image preview available upon receipt scan capture.
+        <div style={{ marginTop: 16 }}>
+          <div className="section-card" style={{ padding: 16, textAlign: "center" }}>
+            {receipt.imageUrl ? (
+              <div>
+                <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
+                  <img
+                    src={receipt.imageUrl}
+                    alt={`Scanned Receipt - ${receipt.description}`}
+                    style={{
+                      width: "100%",
+                      maxHeight: 520,
+                      borderRadius: 16,
+                      border: "1px solid var(--border-subtle)",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
+                      objectFit: "contain",
+                    }}
+                  />
+                </div>
+                
+                <div style={{ marginTop: 16, textAlign: "left", background: "var(--bg-subtle)", padding: 14, borderRadius: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "#166534" }}>
+                      📁 Google Drive 7-Year Vault Backup
+                    </span>
+                    <span style={{ fontSize: "0.7rem", color: "#15803d", backgroundColor: "#dcfce7", padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
+                      Synced
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", wordBreak: "break-all" }}>
+                    {receipt.driveUrl || `Google Drive: PayTrack_Receipts/${receipt.date.slice(0, 4)}/${receipt.date.slice(5, 7)}/receipt_${receipt.id}.jpg`}
+                  </div>
+                </div>
+
+                <a
+                  href={receipt.imageUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="pill-btn"
+                  style={{ display: "inline-block", marginTop: 14, fontSize: "0.8rem", padding: "8px 16px", textDecoration: "none", fontWeight: 700 }}
+                >
+                  🔍 Open Full High-Res Receipt Photo
+                </a>
+              </div>
+            ) : (
+              <div style={{ padding: "40px 20px" }}>
+                <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>🧾</div>
+                <h4 style={{ margin: "0 0 6px", fontSize: "1rem", fontWeight: 800 }}>No Receipt Image Attached</h4>
+                <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", margin: 0 }}>
+                  Snap or upload a photo via AI Receipt Scanner to store high-res receipts in your Google Drive Vault.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
