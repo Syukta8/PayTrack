@@ -38,7 +38,7 @@ const INCOME_CATEGORIES = [
   { id: "Salary", label: "Salary", icon: "💼" },
 ];
 
-const PAYMENT_METHODS = ["Cash", "QR", "Card", "Transfer"];
+const PAYMENT_METHODS = ["Cash", "QR", "Debit Card", "Credit Card", "SPayLater", "Transfer"];
 
 export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   isOpen,
@@ -50,6 +50,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [amountStr, setAmountStr] = useState("0.00");
   const [selectedCategory, setSelectedCategory] = useState("Food & Dining");
   const [selectedPayment, setSelectedPayment] = useState("Cash");
+  const [spayTenure, setSpayTenure] = useState<1 | 3 | 6 | 12>(1);
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [note, setNote] = useState("");
 
@@ -76,18 +77,23 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
   const handleSave = () => {
     const amount = parseFloat(amountStr) || 0;
+    const finalNote = selectedPayment === "SPayLater" 
+      ? `${note ? `${note} ` : ""}(SPayLater ${spayTenure}M)`
+      : note;
+
     onSubmit({
       type,
       amount,
       category: selectedCategory,
       paymentMethod: selectedPayment,
       date,
-      note,
+      note: finalNote,
     });
     // Reset state values after saving
     setAmountStr("0.00");
     setSelectedCategory(type === "expense" ? "Food & Dining" : "Salary");
     setSelectedPayment("Cash");
+    setSpayTenure(1);
     setNote("");
     onClose();
   };
@@ -177,6 +183,30 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             </button>
           ))}
         </div>
+
+        {selectedPayment === "SPayLater" && (
+          <div style={{ marginTop: 12, padding: "12px", background: "var(--bg-subtle)", borderRadius: 12 }}>
+            <div className="hero-eyebrow" style={{ marginBottom: 8 }}>SPAYLATER TENURE</div>
+            <div className="pill-options-row" style={{ marginBottom: 0 }}>
+              {([1, 3, 6, 12] as const).map((months) => {
+                const totalAmt = parseFloat(amountStr) || 0;
+                const monthlyAmt = totalAmt > 0 ? (totalAmt / months).toFixed(2) : "0.00";
+                return (
+                  <button
+                    key={months}
+                    type="button"
+                    className={`opt-pill ${spayTenure === months ? "active" : ""}`}
+                    onClick={() => setSpayTenure(months)}
+                    style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "6px 12px" }}
+                  >
+                    <span>{months} {months === 1 ? "Month" : "Months"}</span>
+                    <span style={{ fontSize: "0.68rem", opacity: 0.8 }}>RM{monthlyAmt}/mo</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Details Fields Container */}
         <div className="hero-eyebrow" style={{ marginBottom: 10 }}>DETAILS</div>

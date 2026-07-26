@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import type { BillStatus, Recurrence } from "../model/types";
+import type { BillStatus, Recurrence, Transaction } from "../model/types";
 
 interface BillsViewProps {
   bills: BillStatus[];
+  transactions?: Transaction[];
   onMarkPaid: (billId: string) => Promise<void>;
   onAddBill: (bill: {
     name: string;
@@ -23,6 +24,7 @@ interface BillsViewProps {
 
 export const BillsView: React.FC<BillsViewProps> = ({
   bills,
+  transactions = [],
   onMarkPaid,
   onAddBill,
   onUpdateBill,
@@ -93,6 +95,13 @@ export const BillsView: React.FC<BillsViewProps> = ({
       setBusyId(null);
     }
   };
+
+  const bnplItems = transactions.filter(
+    (t) =>
+      t.paymentType === "SPayLater" ||
+      (t.remarks && t.remarks.includes("SPayLater")) ||
+      (t.description && t.description.includes("SPayLater"))
+  );
 
   return (
     <div style={{ padding: "0 0 20px" }}>
@@ -202,6 +211,61 @@ export const BillsView: React.FC<BillsViewProps> = ({
             No recurring bills added yet.
           </div>
         )}
+      </div>
+
+      {/* SPayLater / BNPL Installments Table */}
+      <div style={{ margin: "24px 20px 16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h3 style={{ fontSize: "1.1rem", fontWeight: 800 }}>SPayLater & Installments</h3>
+          <span className="badge-pill" style={{ backgroundColor: "#fef3c7", color: "#b45309" }}>
+            BNPL Ledger
+          </span>
+        </div>
+
+        <div className="section-card">
+          {bnplItems.length > 0 ? (
+            bnplItems.map((item) => {
+              const match = (item.description + " " + item.remarks).match(/SPayLater\s*(\d+)M/i);
+              const tenureMonths = match ? parseInt(match[1], 10) : 1;
+              const monthlyInstallment = (item.amount / tenureMonths).toFixed(2);
+
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px 0",
+                    borderBottom: "1px solid var(--border-subtle)",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "var(--text-main)" }}>
+                      {item.description || "SPayLater Purchase"}
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
+                      {item.date} · {tenureMonths} Months Tenure ({item.category})
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "#ef4444" }}>
+                      RM{monthlyInstallment}<span style={{ fontSize: "0.7rem", fontWeight: 500, color: "var(--text-muted)" }}>/mo</span>
+                    </div>
+                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>
+                      Total: RM{item.amount.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ textAlign: "center", padding: "24px 0", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+              No active SPayLater installment plans recorded yet.
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add / Edit Bill Drawer Modal */}

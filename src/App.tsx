@@ -236,6 +236,7 @@ export default function App() {
             {activeTab === "bills" && (
               <BillsView
                 bills={bills}
+                transactions={transactions}
                 onMarkPaid={async (billId) => {
                   if (!vm.tracker) return;
                   await vm.tracker.markBillPaid(billId);

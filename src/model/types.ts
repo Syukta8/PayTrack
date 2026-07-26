@@ -3,7 +3,7 @@ export type Recurrence = "monthly" | "weekly" | "yearly";
 export type BillHealth = "paid" | "overdue" | "due_soon" | "upcoming";
 export type MaintenanceHealth = Exclude<BillHealth, "paid">;
 
-export const PAYMENT_TYPES = ["Online banking", "QR code", "Debit card", "Credit card", "Cash"] as const;
+export const PAYMENT_TYPES = ["Online banking", "QR code", "Debit card", "Credit card", "SPayLater", "Cash"] as const;
 
 export interface Transaction {
   id: string;
