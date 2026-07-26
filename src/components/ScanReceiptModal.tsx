@@ -281,8 +281,7 @@ Return ONLY raw JSON matching this structure without markdown formatting:
               ✨
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800 }}>Server AI Receipt Scanner</h3>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Method 1 Server Vision AI (Zero Key Entry)</span>
+              <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800 }}>AI Receipt Scanner</h3>
             </div>
           </div>
           <button className="sheet-action-btn cancel" onClick={handleClose}>
@@ -470,7 +469,7 @@ Return ONLY raw JSON matching this structure without markdown formatting:
               opacity: isScanning || !selectedImage ? 0.6 : 1,
             }}
           >
-            {isScanning ? "🤖 Server AI Vision Processing..." : "✨ Scan & Extract with Server AI"}
+            {isScanning ? "🤖 AI Scanner Processing..." : "✨ Scan & Extract Receipt"}
           </button>
         </div>
       </div>
