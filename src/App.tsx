@@ -14,6 +14,7 @@ import { MaintenanceView } from "./components/MaintenanceView";
 import { ScanReceiptModal } from "./components/ScanReceiptModal";
 import { PasteSmsModal } from "./components/PasteSmsModal";
 import { StatementReconciliationModal } from "./components/StatementReconciliationModal";
+import { saveReceiptImage } from "./model/imageStore";
 import type { Transaction } from "./model/types";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -93,20 +94,29 @@ export default function App() {
     paymentMethod: string;
     date: string;
     note: string;
+    imageUrl?: string;
+    driveUrl?: string;
   }) => {
     if (!vm.tracker) return;
     try {
-      await vm.tracker.addTransaction({
+      const drivePath = formData.driveUrl || scannedData?.driveUrl || `Google Drive: PayTrack_Receipts/${formData.date.slice(0, 4)}/${formData.date.slice(5, 7)}/receipt_${Date.now().toString(36)}.jpg`;
+      const imgData = formData.imageUrl || scannedData?.imageUrl;
+
+      const createdId = await vm.tracker.addTransaction({
         date: formData.date,
         type: formData.type,
         amount: formData.amount,
         category: formData.category,
         paymentType: formData.paymentMethod,
         description: formData.note,
-        remarks: scannedData?.driveUrl || "",
-        imageUrl: scannedData?.imageUrl,
-        driveUrl: scannedData?.driveUrl,
+        remarks: drivePath,
+        imageUrl: drivePath,
+        driveUrl: drivePath,
       });
+
+      if (imgData && createdId) {
+        await saveReceiptImage(createdId, imgData);
+      }
       await vm.reload();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to add transaction.");

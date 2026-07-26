@@ -36,7 +36,7 @@ export class Tracker {
   }
 
   /** Adds a ledger transaction. */
-  public async addTransaction(input: Omit<Transaction, "id" | "createdAt">): Promise<void> { requireDate(input.date, "Transaction date"); requireText(input.category, "Transaction category"); requireNonNegative(input.amount, "Transaction amount"); await this.sheets.append("transactions", { ...input, category: input.category.trim(), id: id(), createdAt: new Date().toISOString() }); }
+  public async addTransaction(input: Omit<Transaction, "id" | "createdAt">): Promise<string> { requireDate(input.date, "Transaction date"); requireText(input.category, "Transaction category"); requireNonNegative(input.amount, "Transaction amount"); const newId = id(); await this.sheets.append("transactions", { ...input, category: input.category.trim(), id: newId, createdAt: new Date().toISOString() }); return newId; }
   /** Deletes a transaction by its stable identifier. */
   public async deleteTransaction(transactionId: string): Promise<void> { await this.deleteById("transactions", transactionId); }
   /** Creates an active recurring bill. */
