@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { createWorker } from "tesseract.js";
 
 interface ScanReceiptModalProps {
   isOpen: boolean;
@@ -12,6 +13,106 @@ interface ScanReceiptModalProps {
   }) => void;
 }
 
+function downscaleImage(dataUrl: string, maxDim = 1280): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      } else {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function parseReceiptText(text: string) {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  let merchantName = lines[0] || "Receipt Scan";
+  for (const l of lines.slice(0, 5)) {
+    if (l.length > 3 && !/date|receipt|tax|gst|sst|cashier|invoice|tel|welcome/i.test(l)) {
+      merchantName = l.substring(0, 32);
+      break;
+    }
+  }
+
+  let totalAmount = 0;
+  const amountRegex = /(?:RM|MYR|\$)?\s*(\d{1,4}\.\d{2})/gi;
+
+  for (const line of lines) {
+    if (/total|jumlah|net|amount|bayar|cash|debit|credit|spaylater/i.test(line)) {
+      const matches = Array.from(line.matchAll(amountRegex));
+      if (matches.length > 0) {
+        const lastVal = parseFloat(matches[matches.length - 1][1]);
+        if (lastVal > 0) {
+          totalAmount = lastVal;
+          break;
+        }
+      }
+    }
+  }
+
+  if (totalAmount === 0) {
+    const allMatches = Array.from(text.matchAll(amountRegex))
+      .map((m) => parseFloat(m[1]))
+      .filter((v) => v > 0 && v < 10000);
+    if (allMatches.length > 0) {
+      totalAmount = Math.max(...allMatches);
+    }
+  }
+
+  let category = "Personal";
+  const fullUpper = text.toUpperCase();
+  if (/FOOD|KOPITIAM|RESTAURANT|MCD|KFC|STARBUCKS|ZUS|GRABFOOD|FOODPANDA|PASAR|AYAM|NASI|LAUK|MEE|DRINK|COFFEE|BAKERY/i.test(fullUpper)) {
+    category = "Food & Dining";
+  } else if (/PETRONAS|SHELL|CALTEX|TOLL|TOUCH N GO|TNG|PARKING|PETROL|DIESEL/i.test(fullUpper)) {
+    category = "Transport";
+  } else if (/UNIFI|TNB|SYABAS|AIR|ELECTRICITY|UTILITY|TELEKOM|DIGI|CELCOM|MAXIS/i.test(fullUpper)) {
+    category = "Bills & Utilities";
+  } else if (/SHOPEE|LAZADA|MYDIN|LOTUS|WATSON|GUARDIAN|MR DIY|DECATHLON|CLOTHES|STORE|SUPERMARKET|MART|DIY/i.test(fullUpper)) {
+    category = "Shopping";
+  }
+
+  let date = new Date().toISOString().split("T")[0];
+  const dateMatch = text.match(/(\d{4}[-\/]\d{2}[-\/]\d{2})|(\d{2}[-\/]\d{2}[-\/]\d{4})/);
+  if (dateMatch) {
+    const rawDate = dateMatch[0].replace(/\//g, "-");
+    const parts = rawDate.split("-");
+    if (parts[0].length === 4) {
+      date = rawDate;
+    } else if (parts[2].length === 4) {
+      date = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+    }
+  }
+
+  return {
+    merchantName,
+    totalAmount,
+    date,
+    category,
+    note: lines.slice(0, 4).join(", ").substring(0, 50),
+  };
+}
+
 export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
   isOpen,
   onClose,
@@ -20,14 +121,15 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("paytrack.geminiApiKey") || "");
   const [isScanning, setIsScanning] = useState(false);
+  const [statusText, setStatusText] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleClose = () => {
     setSelectedImage(null);
     setErrorMessage(null);
     setIsScanning(false);
+    setStatusText("");
     onClose();
   };
 
@@ -51,109 +153,45 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
       return;
     }
 
-    if (!apiKey.trim()) {
-      setErrorMessage("Please enter your free Gemini API Key below.");
-      return;
-    }
-
-    localStorage.setItem("paytrack.geminiApiKey", apiKey.trim());
     setIsScanning(true);
     setErrorMessage(null);
+    setStatusText("⚡ Optimizing receipt photo for mobile...");
 
     try {
-      const base64Data = selectedImage.split(",")[1];
-      const mimeType = selectedImage.split(";")[0].split(":")[1] || "image/jpeg";
+      // Step 1: Downscale image for fast mobile OCR
+      const optimizedImage = await downscaleImage(selectedImage, 1280);
 
-      const cleanKey = apiKey.trim();
-      const endpointsToTry = [
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(cleanKey)}`,
-        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(cleanKey)}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(cleanKey)}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(cleanKey)}`,
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${encodeURIComponent(cleanKey)}`,
-      ];
+      // Step 2: Initialize Tesseract WebAssembly Worker
+      setStatusText("📄 Extracting text with Offline OCR Engine...");
+      const worker = await createWorker("eng");
 
-      let response: Response | null = null;
-      let primaryErrMessage = "";
+      // Step 3: Run recognition
+      setStatusText("✨ Recognizing items & amounts...");
+      const { data } = await worker.recognize(optimizedImage);
+      await worker.terminate();
 
-      for (const url of endpointsToTry) {
-        try {
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: `Analyze this receipt image and extract structured financial information.
-Return ONLY valid JSON matching this exact structure without markdown backticks:
-{
-  "merchantName": "Store Name",
-  "totalAmount": 0.00,
-  "date": "YYYY-MM-DD",
-  "category": "Food & Dining" | "Shopping" | "Entertainment" | "Bills & Utilities" | "Personal" | "Transport",
-  "note": "brief summary of items"
-}`,
-                    },
-                    {
-                      inline_data: {
-                        mime_type: mimeType,
-                        data: base64Data,
-                      },
-                    },
-                  ],
-                },
-              ],
-            }),
-          });
-
-          if (res.ok) {
-            response = res;
-            break;
-          } else {
-            const errData = await res.json().catch(() => ({}));
-            const msg = errData?.error?.message || `HTTP ${res.status}`;
-            if (!primaryErrMessage) {
-              primaryErrMessage = msg;
-            }
-          }
-        } catch (e) {
-          if (!primaryErrMessage) {
-            primaryErrMessage = e instanceof Error ? e.message : "Network error";
-          }
-        }
+      const extractedText = data.text || "";
+      if (!extractedText.trim()) {
+        throw new Error("Could not detect text on this receipt. Please ensure photo is clear.");
       }
 
-      if (!response || !response.ok) {
-        throw new Error(
-          primaryErrMessage.includes("is not found") || primaryErrMessage.includes("API_KEY")
-            ? "Your Gemini API Key is invalid or Generative Language API is disabled. Please create a fresh free key at aistudio.google.com"
-            : `Gemini API Error: ${primaryErrMessage}`
-        );
-      }
-
-      const result = await response.json();
-      const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-      const cleanedJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-
-      const parsed = JSON.parse(cleanedJson);
+      // Step 4: Parse financial details
+      const parsed = parseReceiptText(extractedText);
 
       onReceiptScanned({
-        amount: Number(parsed.totalAmount) || 0,
-        category: parsed.category || "Food & Dining",
-        description: parsed.merchantName || "Receipt Scan",
-        date: parsed.date || new Date().toISOString().split("T")[0],
-        note: parsed.note || "",
+        amount: parsed.totalAmount,
+        category: parsed.category,
+        description: parsed.merchantName,
+        date: parsed.date,
+        note: parsed.note,
       });
 
-      setSelectedImage(null);
-      setErrorMessage(null);
       handleClose();
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Failed to scan receipt.");
+      setErrorMessage(err instanceof Error ? err.message : "Failed to process receipt with offline OCR.");
     } finally {
       setIsScanning(false);
+      setStatusText("");
     }
   };
 
@@ -161,8 +199,8 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
         <div className="sheet-drag-handle" />
-        
-        {/* Header with AI Badge */}
+
+        {/* Header */}
         <div className="sheet-header" style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
@@ -170,19 +208,19 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
                 width: 38,
                 height: 38,
                 borderRadius: 12,
-                background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+                background: "linear-gradient(135deg, #10b981, #3b82f6)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "#ffffff",
-                boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
               }}
             >
-              ✨
+              📄
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800 }}>AI Receipt Scanner</h3>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Powered by Gemini 1.5 Vision AI</span>
+              <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800 }}>Offline Receipt Scanner</h3>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Mobile-Optimized Browser OCR (Zero Key Setup)</span>
             </div>
           </div>
           <button className="sheet-action-btn cancel" onClick={handleClose}>
@@ -323,34 +361,23 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
             </div>
           )}
 
-          {/* Gemini API Key Box */}
-          <div style={{ textAlign: "left", marginBottom: 16 }}>
-            <div className="hero-eyebrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>GEMINI API KEY (100% FREE AI VISION)</span>
-              <a
-                href="https://aistudio.google.com"
-                target="_blank"
-                rel="noreferrer"
-                style={{ fontSize: "0.7rem", color: "#3b82f6", fontWeight: 700, textDecoration: "none" }}
-              >
-                Get Free Key ↗
-              </a>
-            </div>
-            <input
-              type="password"
-              placeholder="Paste your Gemini API key (AIzaSy...)"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+          {isScanning && (
+            <div
               style={{
-                width: "100%",
+                backgroundColor: "rgba(16, 185, 129, 0.08)",
+                border: "1px solid #10b981",
+                color: "#065f46",
                 padding: "10px 12px",
                 borderRadius: 10,
-                border: "1px solid var(--border-light)",
-                fontSize: "0.85rem",
-                marginTop: 6,
+                fontSize: "0.8rem",
+                fontWeight: 700,
+                marginBottom: 14,
+                textAlign: "center",
               }}
-            />
-          </div>
+            >
+              {statusText}
+            </div>
+          )}
 
           {errorMessage && (
             <div
@@ -381,7 +408,7 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
               opacity: isScanning || !selectedImage ? 0.6 : 1,
             }}
           >
-            {isScanning ? "✨ Scanning Receipt with AI..." : "⚡ Scan & Extract Expense Data"}
+            {isScanning ? "📄 Processing Receipt..." : "⚡ Scan & Extract Expense Data"}
           </button>
         </div>
       </div>
