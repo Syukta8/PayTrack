@@ -58,6 +58,7 @@ plus shared infrastructure (`sheets.ts` data-access helpers, `auth.ts` owner gua
 - Never mention sensitive information, personal financial values, or API keys in git commit text; keep commit messages high-level and generic.
 - Call out assumptions explicitly instead of silently guessing.
 - When a task is ambiguous, state your interpretation before proceeding.
+- Always keep Desktop view and Mobile view synchronized; whenever changes affect mobile view, update and verify desktop view styling and layout (and vice-versa).
 
 ## Role: Project Manager
 
