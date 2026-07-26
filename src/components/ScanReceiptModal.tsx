@@ -68,17 +68,25 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
 
       for (const model of modelsToTry) {
         try {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                contents: [
-                  {
-                    parts: [
-                      {
-                        text: `Analyze this receipt image and extract structured financial information.
+          const isBearer = apiKey.trim().startsWith("AQ.");
+          const url = isBearer
+            ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+            : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
+
+          const headers: Record<string, string> = { "Content-Type": "application/json" };
+          if (isBearer) {
+            headers["Authorization"] = `Bearer ${apiKey.trim()}`;
+          }
+
+          const res = await fetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: `Analyze this receipt image and extract structured financial information.
 Return ONLY valid JSON matching this exact structure without markdown backticks:
 {
   "merchantName": "Store Name",
@@ -87,19 +95,18 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
   "category": "Food & Dining" | "Shopping" | "Entertainment" | "Bills & Utilities" | "Personal" | "Transport",
   "note": "brief summary of items"
 }`,
+                    },
+                    {
+                      inline_data: {
+                        mime_type: mimeType,
+                        data: base64Data,
                       },
-                      {
-                        inline_data: {
-                          mime_type: mimeType,
-                          data: base64Data,
-                        },
-                      },
-                    ],
-                  },
-                ],
-              }),
-            }
-          );
+                    },
+                  ],
+                },
+              ],
+            }),
+          });
 
           if (res.ok) {
             response = res;
