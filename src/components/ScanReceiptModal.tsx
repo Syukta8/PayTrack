@@ -53,21 +53,26 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
     setErrorMessage(null);
 
     try {
-      // Strip base64 prefix
       const base64Data = selectedImage.split(",")[1];
       const mimeType = selectedImage.split(";")[0].split(":")[1] || "image/jpeg";
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
+      const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+      let response: Response | null = null;
+      let lastErrMessage = "";
+
+      for (const model of modelsToTry) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [
                   {
-                    text: `Analyze this receipt image and extract structured financial information.
+                    parts: [
+                      {
+                        text: `Analyze this receipt image and extract structured financial information.
 Return ONLY valid JSON matching this exact structure without markdown backticks:
 {
   "merchantName": "Store Name",
@@ -76,22 +81,34 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
   "category": "Food & Dining" | "Shopping" | "Entertainment" | "Bills & Utilities" | "Personal" | "Transport",
   "note": "brief summary of items"
 }`,
-                  },
-                  {
-                    inline_data: {
-                      mime_type: mimeType,
-                      data: base64Data,
-                    },
+                      },
+                      {
+                        inline_data: {
+                          mime_type: mimeType,
+                          data: base64Data,
+                        },
+                      },
+                    ],
                   },
                 ],
-              },
-            ],
-          }),
-        }
-      );
+              }),
+            }
+          );
 
-      if (!response.ok) {
-        throw new Error(`Gemini API request failed (${response.status}). Check your API Key.`);
+          if (res.ok) {
+            response = res;
+            break;
+          } else {
+            const errData = await res.json().catch(() => ({}));
+            lastErrMessage = errData?.error?.message || `HTTP ${res.status}`;
+          }
+        } catch (e) {
+          lastErrMessage = e instanceof Error ? e.message : "Network error";
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw new Error(`Gemini API Error: ${lastErrMessage}. Make sure your key is generated at aistudio.google.com`);
       }
 
       const result = await response.json();
@@ -119,17 +136,39 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
         <div className="sheet-drag-handle" />
-        <div className="sheet-header">
-          <h3>AI Receipt Scanner</h3>
+        
+        {/* Header with AI Badge */}
+        <div className="sheet-header" style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#ffffff",
+                boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+              }}
+            >
+              ✨
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800 }}>AI Receipt Scanner</h3>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Powered by Gemini 1.5 Vision AI</span>
+            </div>
+          </div>
           <button className="sheet-action-btn cancel" onClick={onClose}>
             Cancel
           </button>
         </div>
 
-        <div className="form-field-card" style={{ textAlign: "center" }}>
-          {/* File input (Camera capture on mobile & File upload on Desktop) */}
+        {/* Upload Container */}
+        <div className="form-field-card" style={{ padding: 18 }}>
           <input
             ref={fileInputRef}
             type="file"
@@ -140,19 +179,27 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
           />
 
           {selectedImage ? (
-            <div style={{ marginBottom: 16 }}>
-              <img
-                src={selectedImage}
-                alt="Receipt preview"
-                style={{ maxHeight: 220, borderRadius: 12, border: "1px solid var(--border-light)", objectFit: "contain" }}
-              />
-              <div style={{ marginTop: 8 }}>
+            <div style={{ textAlign: "center", marginBottom: 16 }}>
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <img
+                  src={selectedImage}
+                  alt="Receipt preview"
+                  style={{
+                    maxHeight: 200,
+                    borderRadius: 14,
+                    border: "1px solid var(--border-subtle)",
+                    boxShadow: "0 6px 16px rgba(0,0,0,0.08)",
+                    objectFit: "contain",
+                  }}
+                />
+              </div>
+              <div style={{ marginTop: 10 }}>
                 <button
                   className="pill-btn"
-                  style={{ fontSize: "0.75rem", padding: "4px 12px" }}
+                  style={{ fontSize: "0.76rem", padding: "6px 14px", fontWeight: 600 }}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  Retake / Choose Other
+                  🔄 Retake / Choose Other Image
                 </button>
               </div>
             </div>
@@ -161,7 +208,7 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
               onClick={() => fileInputRef.current?.click()}
               style={{
                 width: "100%",
-                padding: "36px 16px",
+                padding: "32px 16px",
                 border: "2px dashed var(--border-light)",
                 borderRadius: 16,
                 backgroundColor: "var(--bg-subtle)",
@@ -170,31 +217,77 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
                 alignItems: "center",
                 gap: 8,
                 marginBottom: 16,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
               }}
             >
-              <div style={{ fontSize: "2rem" }}>📷</div>
-              <span style={{ fontSize: "0.95rem", fontWeight: 800 }}>Snap Photo or Upload Receipt</span>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Supports JPG, PNG, WEBP receipts</span>
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: "50%",
+                  backgroundColor: "#ffffff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.6rem",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                📸
+              </div>
+              <span style={{ fontSize: "0.98rem", fontWeight: 800, color: "var(--text-main)" }}>
+                Snap Photo or Upload Receipt
+              </span>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                Supports JPG, PNG, WEBP receipts & invoices
+              </span>
             </button>
           )}
 
-          {/* Gemini API Key Entry */}
+          {/* Gemini API Key Box */}
           <div style={{ textAlign: "left", marginBottom: 16 }}>
-            <div className="hero-eyebrow">GEMINI API KEY (FREE AI VISION)</div>
+            <div className="hero-eyebrow" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>GEMINI API KEY (100% FREE AI VISION)</span>
+              <a
+                href="https://aistudio.google.com"
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: "0.7rem", color: "#3b82f6", fontWeight: 700, textDecoration: "none" }}
+              >
+                Get Free Key ↗
+              </a>
+            </div>
             <input
               type="password"
-              placeholder="Paste your Gemini API key here"
+              placeholder="Paste your Gemini API key (AIzaSy...)"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--border-light)",
+                fontSize: "0.85rem",
+                marginTop: 6,
+              }}
             />
-            <div style={{ fontSize: "0.7rem", color: "var(--text-light)", marginTop: 4 }}>
-              Get a free API key at <strong>aistudio.google.com</strong>
-            </div>
           </div>
 
           {errorMessage && (
-            <div style={{ color: "#ef4444", fontSize: "0.8rem", marginBottom: 14 }}>
-              {errorMessage}
+            <div
+              style={{
+                backgroundColor: "#fef2f2",
+                border: "1px solid #fca5a5",
+                color: "#991b1b",
+                padding: "10px 12px",
+                borderRadius: 10,
+                fontSize: "0.78rem",
+                marginBottom: 14,
+                textAlign: "left",
+              }}
+            >
+              ⚠️ {errorMessage}
             </div>
           )}
 
@@ -202,8 +295,15 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
             className="primary-dark-btn"
             disabled={isScanning || !selectedImage}
             onClick={handleProcessOCR}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              fontSize: "0.9rem",
+              fontWeight: 800,
+              opacity: isScanning || !selectedImage ? 0.6 : 1,
+            }}
           >
-            {isScanning ? "Scanning with Gemini AI..." : "Scan & Extract Receipt Data"}
+            {isScanning ? "✨ Scanning Receipt with AI..." : "⚡ Scan & Extract Expense Data"}
           </button>
         </div>
       </div>
