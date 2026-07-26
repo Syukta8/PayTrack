@@ -17,6 +17,8 @@ export interface Transaction {
   createdAt: string;
   imageUrl?: string;
   driveUrl?: string;
+  tax?: number;
+  serviceCharge?: number;
 }
 
 export interface RecurringBill {

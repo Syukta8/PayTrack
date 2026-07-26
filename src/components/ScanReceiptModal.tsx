@@ -5,6 +5,8 @@ interface ScanReceiptModalProps {
   onClose: () => void;
   onReceiptScanned: (data: {
     amount: number;
+    tax?: number;
+    serviceCharge?: number;
     category: string;
     description: string;
     date: string;
@@ -100,6 +102,8 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
       let parsed: {
         merchantName: string;
         totalAmount: number;
+        tax?: number;
+        serviceCharge?: number;
         date: string;
         category: string;
         note: string;
@@ -121,6 +125,8 @@ Return ONLY raw JSON matching this structure without markdown formatting:
 {
   "merchantName": "Store Name",
   "totalAmount": 0.00,
+  "tax": 0.00,
+  "serviceCharge": 0.00,
   "date": "YYYY-MM-DD",
   "category": "Food & Dining" | "Shopping" | "Entertainment" | "Bills & Utilities" | "Personal" | "Transport",
   "paymentMethod": "Cash" | "QR code" | "Debit card" | "Credit card" | "SPayLater",
@@ -151,6 +157,8 @@ Return ONLY raw JSON matching this structure without markdown formatting:
         parsed = {
           merchantName: "MY HERO HYPERMARKET",
           totalAmount: 55.95,
+          tax: 0.00,
+          serviceCharge: 0.00,
           date: "2026-07-21",
           category: "Shopping",
           paymentMethod: "SPayLater",
@@ -164,6 +172,8 @@ Return ONLY raw JSON matching this structure without markdown formatting:
 
       onReceiptScanned({
         amount: Number(parsed.totalAmount) || 0,
+        tax: Number(parsed.tax) || 0,
+        serviceCharge: Number(parsed.serviceCharge) || 0,
         category: parsed.category || "Shopping",
         description: parsed.merchantName || "Receipt Scan",
         date: dateStr,

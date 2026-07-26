@@ -77,42 +77,44 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
               <span style={{ fontSize: "0.75rem", color: "var(--text-light)" }}>{receipt.date}</span>
             </div>
 
-            <table className="subtotal-table">
-              <tbody>
-                <tr>
-                  <td>Subtotal</td>
-                  <td style={{ textAlign: "right", fontWeight: 700 }}>
-                    RM{(receipt.amount * (receipt.category === "Food & Dining" || receipt.category === "Shopping" ? 0.94 : 1)).toFixed(2)}
-                  </td>
-                </tr>
-                <tr>
-                  <td>Discounts</td>
-                  <td style={{ textAlign: "right", fontWeight: 700 }}>RM0.00</td>
-                </tr>
-                <tr>
-                  <td>Service Charge</td>
-                  <td style={{ textAlign: "right", fontWeight: 700, color: "var(--badge-tax-text)" }}>
-                    RM{(receipt.amount * 0.04).toFixed(2)}
-                  </td>
-                </tr>
-                {(receipt.category === "Food & Dining" || receipt.category === "Shopping") && (
-                  <tr>
-                    <td>Tax (6%)</td>
-                    <td style={{ textAlign: "right", fontWeight: 700, color: "var(--badge-tax-text)" }}>
-                      RM{(receipt.amount * 0.06).toFixed(2)}
-                    </td>
-                  </tr>
-                )}
-                <tr>
-                  <td>Rounding</td>
-                  <td style={{ textAlign: "right", fontWeight: 700 }}>RM0.01</td>
-                </tr>
-                <tr className="total-row">
-                  <td>Total Amount</td>
-                  <td style={{ textAlign: "right" }}>RM{receipt.amount.toFixed(2)}</td>
-                </tr>
-              </tbody>
-            </table>
+            {(() => {
+              const actualTax = receipt.tax || 0;
+              const actualServiceCharge = receipt.serviceCharge || 0;
+              const subtotal = Math.max(0, receipt.amount - actualTax - actualServiceCharge);
+
+              return (
+                <table className="subtotal-table">
+                  <tbody>
+                    <tr>
+                      <td>Subtotal</td>
+                      <td style={{ textAlign: "right", fontWeight: 700 }}>
+                        RM{subtotal.toFixed(2)}
+                      </td>
+                    </tr>
+                    {actualServiceCharge > 0 && (
+                      <tr>
+                        <td>Service Charge</td>
+                        <td style={{ textAlign: "right", fontWeight: 700, color: "var(--badge-tax-text)" }}>
+                          RM{actualServiceCharge.toFixed(2)}
+                        </td>
+                      </tr>
+                    )}
+                    {actualTax > 0 && (
+                      <tr>
+                        <td>Tax (SST/GST)</td>
+                        <td style={{ textAlign: "right", fontWeight: 700, color: "var(--badge-tax-text)" }}>
+                          RM{actualTax.toFixed(2)}
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="total-row">
+                      <td>Total Amount</td>
+                      <td style={{ textAlign: "right" }}>RM{receipt.amount.toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              );
+            })()}
           </div>
 
           {/* Action Row */}
