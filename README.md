@@ -100,6 +100,33 @@ VITE_DEMO_MODE=false
 
 ---
 
+### Step 4b: Turn On the AI Receipt Scanner (Optional)
+
+The scanner reads a photo of a receipt with Google's Gemini vision model. Without a key, the
+scanner tells you it isn't configured — everything else in PayTrack still works, and you can
+always type expenses in by hand.
+
+1. Get a key at **[aistudio.google.com/apikey](https://aistudio.google.com/apikey)**.
+2. In Google Cloud Console, **restrict the key** to the *Generative Language API* only, and
+   add an HTTP-referrer restriction for the domain you serve PayTrack from.
+3. Add it to `.env`:
+   ```env
+   VITE_GEMINI_API_KEY=AIzaSy... (your Gemini key)
+   ```
+4. Restart `npm run dev` — Vite only reads `.env` at startup.
+
+> ⚠️ **Understand the tradeoff.** PayTrack has no backend of its own; the browser calls
+> Gemini directly. That means any `VITE_*` value is compiled into the JavaScript bundle and
+> can be read by anyone who loads the app. There is no way to hide it without adding a server.
+> So: use a key that is restricted as above, keep it out of git (`.env` is already ignored),
+> set a billing quota you are comfortable with, and rotate it if you publish the app publicly.
+> If you would rather not ship a key at all, leave it blank and enter expenses manually.
+>
+> Older builds required pasting the key into `localStorage["paytrack.geminiApiKey"]` via
+> devtools. That still works, but `VITE_GEMINI_API_KEY` takes precedence when both are set.
+
+---
+
 ### Step 5: Create a Blank Google Sheet & Connect
 
 1. Open your browser and go to **[sheets.new](https://sheets.new)** to create a brand new blank Google Sheet.

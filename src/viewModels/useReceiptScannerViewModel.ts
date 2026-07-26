@@ -1,9 +1,8 @@
 import { useCallback, useState } from "react";
+import { MISSING_KEY_MESSAGE, readApiKey } from "../model/geminiConfig";
 import { MIN_LEGIBLE_WIDTH, measureWidth, prepareImage } from "../model/receiptImage";
 import { scanReceipt } from "../model/receiptVision";
 import type { ReceiptItem } from "../model/types";
-
-const API_KEY_STORAGE = "paytrack.geminiApiKey";
 
 export interface ScannedTransactionDraft {
   amount: number;
@@ -59,13 +58,12 @@ export function useReceiptScannerViewModel(onScanned: (draft: ScannedTransaction
       return;
     }
 
-    const apiKey = localStorage.getItem(API_KEY_STORAGE)?.trim();
-    if (!apiKey) {
-      setErrorMessage(
-        "Scanner not configured: no Gemini API key is set, so this receipt cannot be read. Add your key to continue, or close this and enter the expense manually.",
-      );
+    const resolved = readApiKey();
+    if (!resolved) {
+      setErrorMessage(MISSING_KEY_MESSAGE);
       return;
     }
+    const apiKey = resolved.key;
 
     setIsScanning(true);
     setErrorMessage(null);
