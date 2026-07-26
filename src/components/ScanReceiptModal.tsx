@@ -25,35 +25,180 @@ interface ScanReceiptModalProps {
   }) => void;
 }
 
-function downscaleImage(dataUrl: string, maxDim = 1280): Promise<string> {
+/** Receipt text legibility depends on horizontal resolution, so width is clamped and
+ * height is left free â a tall thermal receipt must not be squeezed to fit a square box.
+ * MAX_PIXELS keeps very long receipts inside a sane request size. */
+const MAX_WIDTH = 1100;
+const MAX_PIXELS = 6_000_000;
+const MIN_LEGIBLE_WIDTH = 800;
+const JPEG_QUALITY = 0.9;
+
+interface PreparedImage {
+  dataUrl: string;
+  sourceWidth: number;
+  width: number;
+}
+
+/** Reads a photo's intrinsic width so the user can be warned before spending a scan. */
+function measureWidth(dataUrl: string): Promise<number> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img.width);
+    img.onerror = () => resolve(0);
+    img.src = dataUrl;
+  });
+}
+
+/** Scales a receipt photo by width only, preserving its aspect ratio and vertical detail. */
+function prepareImage(dataUrl: string): Promise<PreparedImage> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      let width = img.width;
-      let height = img.height;
-      if (width > maxDim || height > maxDim) {
-        if (width > height) {
-          height = Math.round((height * maxDim) / width);
-          width = maxDim;
-        } else {
-          width = Math.round((width * maxDim) / height);
-          height = maxDim;
-        }
+      const sourceWidth = img.width;
+      if (!sourceWidth || !img.height) {
+        resolve({ dataUrl, sourceWidth: 0, width: 0 });
+        return;
       }
+
+      let scale = sourceWidth > MAX_WIDTH ? MAX_WIDTH / sourceWidth : 1;
+      const scaledPixels = sourceWidth * scale * img.height * scale;
+      if (scaledPixels > MAX_PIXELS) scale *= Math.sqrt(MAX_PIXELS / scaledPixels);
+
+      const width = Math.max(1, Math.round(sourceWidth * scale));
+      const height = Math.max(1, Math.round(img.height * scale));
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
-      } else {
-        resolve(dataUrl);
+      if (!ctx) {
+        resolve({ dataUrl, sourceWidth, width: sourceWidth });
+        return;
       }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve({ dataUrl: canvas.toDataURL("image/jpeg", JPEG_QUALITY), sourceWidth, width });
     };
-    img.onerror = () => resolve(dataUrl);
+    img.onerror = () => resolve({ dataUrl, sourceWidth: 0, width: 0 });
     img.src = dataUrl;
   });
+}
+
+const GEMINI_MODEL = "gemini-1.5-flash";
+const AMOUNT_CEILING = 1_000_000;
+
+interface ScannedItem {
+  name: string;
+  qty: number;
+  unitPrice: number;
+  totalPrice: number;
+  category?: string;
+}
+
+interface ScannedReceipt {
+  merchantName: string;
+  totalAmount: number;
+  tax: number;
+  serviceCharge: number;
+  date: string;
+  category: string;
+  note: string;
+  paymentMethod?: string;
+  items: ScannedItem[];
+}
+
+type ScanResult = { ok: true; receipt: ScannedReceipt } | { ok: false; reason: string };
+
+const QUALITY_MESSAGE =
+  "Low Quality Image Guard: this photo is too blurry, dark, or cropped to read reliably. Retake it with the whole receipt in frame and good lighting â nothing has been saved.";
+
+/** Parses a currency-ish value, rejecting anything that is not genuinely numeric.
+ * Stripping symbols is not enough: Number("") is 0, so a garbage string such as "NaN"
+ * would otherwise be accepted as a real zero. */
+function finiteNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string") return null;
+  const cleaned = value.replace(/[^0-9.-]/g, "");
+  if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isRealCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function localToday(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+/** Validates a raw vision response before any of it can reach the ledger.
+ * Anything unreadable, non-numeric, or impossible is rejected outright â this pipeline
+ * never substitutes invented values for a failed extraction. */
+function validateReceipt(raw: unknown): ScanResult {
+  if (!raw || typeof raw !== "object") return { ok: false, reason: "The scanner returned an unreadable response. Please try again." };
+  const source = raw as Record<string, unknown>;
+
+  if (source.isQualityLow === true || source.isQualityLow === "true") return { ok: false, reason: QUALITY_MESSAGE };
+
+  const totalAmount = finiteNumber(source.totalAmount);
+  if (totalAmount === null || totalAmount <= 0) return { ok: false, reason: QUALITY_MESSAGE };
+  if (totalAmount > AMOUNT_CEILING) {
+    return { ok: false, reason: `The scanner read a total of RM${totalAmount.toFixed(2)}, which looks like a misread. Please retake the photo or enter this receipt manually.` };
+  }
+
+  // A future date always means a misread; an absent or malformed one falls back to today,
+  // which the user reviews in the editable form before saving.
+  const rawDate = typeof source.date === "string" ? source.date.trim() : "";
+  let date = localToday();
+  if (rawDate && isRealCalendarDate(rawDate)) {
+    if (rawDate > localToday()) {
+      return { ok: false, reason: `The scanner read the receipt date as ${rawDate}, which is in the future. Please retake the photo or enter this receipt manually.` };
+    }
+    date = rawDate;
+  }
+
+  const merchantName = typeof source.merchantName === "string" && source.merchantName.trim() ? source.merchantName.trim() : "";
+  if (!merchantName) return { ok: false, reason: QUALITY_MESSAGE };
+
+  const rawItems = Array.isArray(source.items) ? source.items : [];
+  const items: ScannedItem[] = [];
+  rawItems.forEach((entry) => {
+    if (!entry || typeof entry !== "object") return;
+    const item = entry as Record<string, unknown>;
+    const name = typeof item.name === "string" ? item.name.trim() : "";
+    const qty = finiteNumber(item.qty);
+    const unitPrice = finiteNumber(item.unitPrice);
+    let totalPrice = finiteNumber(item.totalPrice);
+    if (totalPrice === null && qty !== null && unitPrice !== null) totalPrice = qty * unitPrice;
+    // Drop unusable rows rather than guess: a short items list surfaces as a visible
+    // subtotal mismatch in the add-expense form instead of a silently wrong total.
+    if (!name || totalPrice === null || totalPrice < 0) return;
+    items.push({
+      name,
+      qty: qty !== null && qty > 0 ? qty : 1,
+      unitPrice: unitPrice !== null && unitPrice >= 0 ? unitPrice : totalPrice,
+      totalPrice,
+      category: typeof item.category === "string" && item.category.trim() ? item.category.trim() : undefined,
+    });
+  });
+
+  return {
+    ok: true,
+    receipt: {
+      merchantName,
+      totalAmount,
+      tax: finiteNumber(source.tax) ?? 0,
+      serviceCharge: finiteNumber(source.serviceCharge) ?? 0,
+      date,
+      category: typeof source.category === "string" && source.category.trim() ? source.category.trim() : "Shopping",
+      note: typeof source.note === "string" && source.note.trim() ? source.note.trim() : merchantName,
+      paymentMethod: typeof source.paymentMethod === "string" && source.paymentMethod.trim() ? source.paymentMethod.trim() : undefined,
+      items,
+    },
+  };
 }
 
 export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
@@ -67,10 +212,12 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const [statusText, setStatusText] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   const handleClose = () => {
     setSelectedImage(null);
     setErrorMessage(null);
+    setWarningMessage(null);
     setIsScanning(false);
     setStatusText("");
     onClose();
@@ -83,9 +230,16 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = () => {
-      setSelectedImage(reader.result as string);
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      setSelectedImage(dataUrl);
       setErrorMessage(null);
+      const width = await measureWidth(dataUrl);
+      setWarningMessage(
+        width > 0 && width < MIN_LEGIBLE_WIDTH
+          ? `This photo is only ${width}px wide. Receipt text below ${MIN_LEGIBLE_WIDTH}px often reads incorrectly — consider retaking it closer or in better light.`
+          : null,
+      );
     };
     reader.readAsDataURL(file);
   };
@@ -96,50 +250,44 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
       return;
     }
 
+    const apiKey = localStorage.getItem("paytrack.geminiApiKey")?.trim();
+    if (!apiKey) {
+      setErrorMessage(
+        "Scanner not configured: no Gemini API key is set, so this receipt cannot be read. Add your key to continue, or close this and enter the expense manually.",
+      );
+      return;
+    }
+
     setIsScanning(true);
     setErrorMessage(null);
-    setStatusText("⚡ Preparing receipt image for Server AI Vision...");
+    setStatusText("⚡ Preparing receipt image...");
 
     try {
-      const optimizedImage = await downscaleImage(selectedImage, 1280);
-      const base64Data = optimizedImage.split(",")[1];
-      const mimeType = optimizedImage.split(";")[0].split(":")[1] || "image/jpeg";
+      const prepared = await prepareImage(selectedImage);
+      const base64Data = prepared.dataUrl.split(",")[1];
+      const mimeType = prepared.dataUrl.split(";")[0].split(":")[1] || "image/jpeg";
+      if (!base64Data) {
+        setErrorMessage("That file could not be read as an image. Please choose a photo of the receipt.");
+        return;
+      }
 
-      setStatusText("🤖 Calling Server AI Vision OCR...");
+      setStatusText("🤖 Reading receipt with AI Vision...");
 
-      let parsed: {
-        merchantName: string;
-        totalAmount: number;
-        tax?: number;
-        serviceCharge?: number;
-        date: string;
-        category: string;
-        note: string;
-        paymentMethod?: string;
-        isQualityLow?: boolean;
-        items?: Array<{
-          name: string;
-          qty: number;
-          unitPrice: number;
-          totalPrice: number;
-          category?: string;
-        }>;
-      } | null = null;
-
-      // 1. Try Gemini Vision AI Call
-      const savedKey = localStorage.getItem("paytrack.geminiApiKey");
-      if (savedKey && savedKey.trim()) {
-        try {
-          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(savedKey.trim())}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: `Analyze this receipt image and extract accurate financial info and itemized subitems.
-Return ONLY raw JSON matching this structure without markdown formatting:
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          body: JSON.stringify({
+            generationConfig: { temperature: 0, responseMimeType: "application/json" },
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Extract the financial details and line items from this receipt image.
+Read only what is actually printed. Never invent, infer, or complete a value you cannot see.
+If the image is blurry, dark, cropped, or is not a receipt, set "isQualityLow" to true and "totalAmount" to 0.
+Respond with JSON only, matching this structure:
 {
   "merchantName": "Store Name",
   "totalAmount": 0.00,
@@ -151,106 +299,85 @@ Return ONLY raw JSON matching this structure without markdown formatting:
   "note": "summary of store/location",
   "isQualityLow": false,
   "items": [
-    {
-      "name": "Item Description",
-      "qty": 1,
-      "unitPrice": 10.00,
-      "totalPrice": 10.00,
-      "category": "Groceries"
-    }
+    { "name": "Item Description", "qty": 1, "unitPrice": 10.00, "totalPrice": 10.00, "category": "Groceries" }
   ]
 }`,
-                    },
-                    {
-                      inline_data: { mime_type: mimeType, data: base64Data },
-                    },
-                  ],
-                },
-              ],
-            }),
-          });
+                  },
+                  { inline_data: { mime_type: mimeType, data: base64Data } },
+                ],
+              },
+            ],
+          }),
+        },
+      );
 
-          if (res.ok) {
-            const json = await res.json();
-            const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-            const cleanedJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-            parsed = JSON.parse(cleanedJson);
-          }
-        } catch {
-          // Continue to fallback
-        }
-      }
-
-      // 2. High-precision dynamic thermal vision parser for receipts (e.g. My Hero Hypermarket 55.95)
-      if (!parsed || !parsed.totalAmount) {
-        parsed = {
-          merchantName: "MY HERO HYPERMARKET",
-          totalAmount: 55.95,
-          tax: 0.00,
-          serviceCharge: 0.00,
-          date: "2026-07-21",
-          category: "Food & Dining",
-          paymentMethod: "QR code",
-          note: "MY HERO HYPERMARKET SDN BHD (Taman Puncak Jalil)",
-          isQualityLow: false,
-          items: [
-            { name: "AAA FISH BALL +/- 135GM (PKT)", qty: 2, unitPrice: 2.25, totalPrice: 4.50, category: "Groceries" },
-            { name: "CHICKEN BISHOP NOSE", qty: 1, unitPrice: 5.90, totalPrice: 5.90, category: "Groceries" },
-            { name: "CHINA SHIITAKE MUSHROOM +/-200G", qty: 1, unitPrice: 3.99, totalPrice: 3.99, category: "Groceries" },
-            { name: "ENOKI MUSHROOM 100G", qty: 2, unitPrice: 0.99, totalPrice: 1.98, category: "Groceries" },
-            { name: "HILO CHICKEN DUMPLING 9'S", qty: 1, unitPrice: 8.50, totalPrice: 8.50, category: "Groceries" },
-            { name: "HILO SARAWAK WHITE PEPPER POWDER 40G", qty: 1, unitPrice: 6.50, totalPrice: 6.50, category: "Groceries" },
-            { name: "HK BABY CHOY SUM +/-200G PKT", qty: 1, unitPrice: 3.59, totalPrice: 3.59, category: "Groceries" },
-            { name: "LS SEAWEED TOFU 200G", qty: 1, unitPrice: 3.50, totalPrice: 3.50, category: "Groceries" },
-            { name: "SA MIXED APPLE 8'S (PKT)", qty: 1, unitPrice: 8.99, totalPrice: 8.99, category: "Groceries" },
-            { name: "TB CHERRY TOMATO 300G", qty: 1, unitPrice: 5.69, totalPrice: 5.69, category: "Groceries" },
-            { name: "YS TIMUN 600G", qty: 1, unitPrice: 2.79, totalPrice: 2.79, category: "Groceries" },
-          ],
-        };
-      }
-
-      if (!parsed) {
-        setErrorMessage("Failed to process receipt image. Please upload a clear receipt photo.");
+      if (!response.ok) {
+        const detail = (await response.json().catch(() => null)) as { error?: { message?: string } } | null;
+        const hint =
+          response.status === 400 || response.status === 401 || response.status === 403
+            ? "Your Gemini API key looks invalid or lacks access to the Generative Language API."
+            : response.status === 429
+              ? "The Gemini API rate limit was hit. Wait a moment and scan again."
+              : `The Gemini API returned an error (${response.status}).`;
+        setErrorMessage(`${hint}${detail?.error?.message ? ` Details: ${detail.error.message}` : ""} Nothing has been saved.`);
         return;
       }
 
-      // LOW-QUALITY IMAGE GUARD: Check if receipt image quality is unreadable or total amount is zero
-      const isQualityLow = Boolean(parsed.isQualityLow) || !parsed.totalAmount || parsed.totalAmount <= 0;
-      if (isQualityLow) {
-        setErrorMessage("Low Quality Image Guard: Uploaded receipt image is blurry, dark, or unreadable. Please upload a clear photo to add this receipt to your database.");
+      const payload = (await response.json()) as {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+      };
+      const rawText = payload.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+      if (!rawText) {
+        setErrorMessage("The scanner returned an empty response, which usually means the image could not be interpreted. Please retake the photo.");
         return;
       }
 
-      const dateStr = parsed.date || new Date().toISOString().split("T")[0];
-      const receiptId = `rcpt_${Date.now().toString(36)}`;
-      const driveFolder = `PayTrack_Receipts/${dateStr.slice(0, 4)}/${dateStr.slice(5, 7)}/${receiptId}.jpg`;
+      let rawReceipt: unknown;
+      try {
+        rawReceipt = JSON.parse(rawText);
+      } catch {
+        setErrorMessage("The scanner's response was not valid JSON, so it could not be trusted. Please try scanning again.");
+        return;
+      }
 
-      const mappedItems = (parsed.items || []).map((it, idx) => ({
-        id: `item_${Date.now().toString(36)}_${idx}`,
-        name: it.name || `Receipt Item #${idx + 1}`,
-        qty: Number(it.qty) || 1,
-        unitPrice: Number(it.unitPrice) || Number(it.totalPrice) || 0,
-        totalPrice: Number(it.totalPrice) || (Number(it.qty) || 1) * (Number(it.unitPrice) || 0),
-        category: it.category || parsed?.category || "Shopping",
-      }));
+      const result = validateReceipt(rawReceipt);
+      if (!result.ok) {
+        setErrorMessage(result.reason);
+        return;
+      }
+
+      const { receipt } = result;
+      const stamp = Date.now().toString(36);
+      const driveFolder = `PayTrack_Receipts/${receipt.date.slice(0, 4)}/${receipt.date.slice(5, 7)}/rcpt_${stamp}.jpg`;
 
       onReceiptScanned({
-        amount: Number(parsed.totalAmount) || 0,
-        tax: Number(parsed.tax) || 0,
-        serviceCharge: Number(parsed.serviceCharge) || 0,
-        category: parsed.category || "Shopping",
-        description: parsed.merchantName || "Receipt Scan",
-        date: dateStr,
-        note: parsed.note || parsed.merchantName,
-        paymentMethod: parsed.paymentMethod || "Cash",
-        imageUrl: optimizedImage || selectedImage,
+        amount: receipt.totalAmount,
+        tax: receipt.tax,
+        serviceCharge: receipt.serviceCharge,
+        category: receipt.category,
+        description: receipt.merchantName,
+        date: receipt.date,
+        note: receipt.note,
+        paymentMethod: receipt.paymentMethod,
+        imageUrl: prepared.dataUrl,
         driveUrl: `Google Drive: ${driveFolder}`,
-        items: mappedItems,
+        items: receipt.items.map((item, index) => ({
+          id: `item_${stamp}_${index}`,
+          name: item.name,
+          qty: item.qty,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          category: item.category ?? receipt.category,
+        })),
       });
 
       handleClose();
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Failed to scan receipt with Server AI Vision.");
+      setErrorMessage(
+        err instanceof Error
+          ? `Could not reach the scanner: ${err.message}. Nothing has been saved.`
+          : "Could not reach the scanner. Check your connection and try again. Nothing has been saved.",
+      );
     } finally {
       setIsScanning(false);
       setStatusText("");
@@ -437,6 +564,23 @@ Return ONLY raw JSON matching this structure without markdown formatting:
               }}
             >
               {statusText}
+            </div>
+          )}
+
+          {warningMessage && !errorMessage && (
+            <div
+              style={{
+                backgroundColor: "rgba(245, 158, 11, 0.10)",
+                border: "1px solid #fbbf24",
+                color: "#92400e",
+                padding: "10px 12px",
+                borderRadius: 10,
+                fontSize: "0.78rem",
+                marginBottom: 14,
+                textAlign: "left",
+              }}
+            >
+              ⚠️ {warningMessage}
             </div>
           )}
 
