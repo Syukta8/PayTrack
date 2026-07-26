@@ -56,7 +56,12 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
       const base64Data = selectedImage.split(",")[1];
       const mimeType = selectedImage.split(";")[0].split(":")[1] || "image/jpeg";
 
-      const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+      const modelsToTry = [
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro-latest",
+        "gemini-2.0-flash-exp",
+      ];
       let response: Response | null = null;
       let lastErrMessage = "";
 
