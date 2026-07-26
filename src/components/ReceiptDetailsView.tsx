@@ -290,26 +290,52 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
       {/* Sticky Bottom Verification Footer */}
       <div className="sticky-bottom-action">
         {(() => {
-          const itemsTotal = subitems.reduce((sum, item) => sum + item.totalPrice, 0);
-          const currentTotal = subitems.length > 0 ? itemsTotal : receipt.amount;
+          const itemsTotal = subitems.reduce((sum, item) => sum + item.totalPrice, 0) + (receipt.tax || 0) + (receipt.serviceCharge || 0);
+          const hasItems = subitems.length > 0;
+          const hasMismatch = hasItems && Math.abs(itemsTotal - receipt.amount) > 0.05;
+          const currentTotal = hasItems ? itemsTotal : receipt.amount;
+
+          if (hasMismatch) {
+            return (
+              <>
+                <div
+                  className="verified-banner"
+                  style={{ backgroundColor: "#fff7ed", color: "#c2410c", border: "1px solid #fdba74" }}
+                >
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: 800, fontSize: "0.8rem" }}>⚠️ Subitem Discrepancy Detected</div>
+                    <div style={{ fontSize: "0.72rem", color: "#9a3412" }}>
+                      Items sum (RM{itemsTotal.toFixed(2)}) vs Total (RM{receipt.amount.toFixed(2)})
+                    </div>
+                  </div>
+                </div>
+
+                <button className="primary-dark-btn" style={{ backgroundColor: "#ea580c" }} onClick={onBack}>
+                  ✨ Sync Total to RM{itemsTotal.toFixed(2)}
+                </button>
+              </>
+            );
+          }
 
           return (
-            <div
-              className="verified-banner"
-              onClick={onBack}
-              style={{ cursor: "pointer" }}
-            >
-              <span>Subtotal Verified (RM{currentTotal.toFixed(2)})</span>
-              <svg width="20" height="20" fill="#22c55e" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-              </svg>
-            </div>
+            <>
+              <div
+                className="verified-banner"
+                onClick={onBack}
+                style={{ cursor: "pointer" }}
+              >
+                <span>Subtotal Verified (RM{currentTotal.toFixed(2)})</span>
+                <svg width="20" height="20" fill="#22c55e" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                </svg>
+              </div>
+
+              <button className="primary-dark-btn" onClick={onBack}>
+                ✓ Done & Save
+              </button>
+            </>
           );
         })()}
-
-        <button className="primary-dark-btn" onClick={onBack}>
-          ✓ Done & Save
-        </button>
       </div>
     </div>
   );

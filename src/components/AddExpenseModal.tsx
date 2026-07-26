@@ -155,14 +155,16 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         </div>
 
         {/* Currency Input Hero */}
-        <div style={{ textAlign: "center", margin: "20px 0 28px" }}>
+        <div style={{ textAlign: "center", margin: "20px 0 16px" }}>
           <div style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
             <span style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--text-light)" }}>RM</span>
             <input
               type="number"
               step="0.01"
+              className="huge-amount-input"
               value={amountStr}
               onChange={(e) => setAmountStr(e.target.value)}
+              placeholder="0.00"
               style={{
                 border: "none",
                 background: "transparent",
@@ -176,6 +178,50 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             />
           </div>
         </div>
+
+        {/* Subitem Verification & Mismatch Card */}
+        {(() => {
+          if (!items || items.length === 0) return null;
+          const itemsSum = items.reduce((sum, item) => sum + item.totalPrice, 0);
+          const currentAmount = parseFloat(amountStr) || 0;
+          const hasMismatch = Math.abs(itemsSum - currentAmount) > 0.05;
+
+          if (hasMismatch) {
+            return (
+              <div style={{ backgroundColor: "#fff7ed", border: "1px solid #fdba74", padding: "10px 14px", borderRadius: 14, marginBottom: 20, textAlign: "left" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#c2410c", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>⚠️ Subitem Sum Mismatch Detected</span>
+                </div>
+                <div style={{ fontSize: "0.74rem", color: "#9a3412", marginBottom: 8 }}>
+                  Items sum (RM{itemsSum.toFixed(2)}) differs from entered amount (RM{currentAmount.toFixed(2)}).
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAmountStr(itemsSum.toFixed(2))}
+                  style={{
+                    backgroundColor: "#ea580c",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 2px 6px rgba(234, 88, 12, 0.3)",
+                  }}
+                >
+                  ✨ Sync Amount to Items Total (RM{itemsSum.toFixed(2)})
+                </button>
+              </div>
+            );
+          }
+
+          return (
+            <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #86efac", padding: "8px 12px", borderRadius: 12, marginBottom: 20, textAlign: "center", fontSize: "0.78rem", fontWeight: 700, color: "#166534" }}>
+              ✅ Subitems Verified — {items.length} items match entered amount (RM{itemsSum.toFixed(2)})
+            </div>
+          );
+        })()}
 
         {/* Category Picker */}
         <div className="hero-eyebrow" style={{ marginBottom: 10 }}>CATEGORY</div>
