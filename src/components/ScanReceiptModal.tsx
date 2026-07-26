@@ -111,16 +111,18 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
       } | null = null;
 
       // Primary Server AI Vision Endpoint
-      try {
-        const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Analyze this receipt image and extract accurate financial info.
+      const savedKey = localStorage.getItem("paytrack.geminiApiKey");
+      if (savedKey && savedKey.trim()) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(savedKey.trim())}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: `Analyze this receipt image and extract accurate financial info.
 Return ONLY raw JSON matching this structure without markdown formatting:
 {
   "merchantName": "Store Name",
@@ -132,24 +134,25 @@ Return ONLY raw JSON matching this structure without markdown formatting:
   "paymentMethod": "Cash" | "QR code" | "Debit card" | "Credit card" | "SPayLater",
   "note": "summary of store/location"
 }`,
-                  },
-                  {
-                    inline_data: { mime_type: mimeType, data: base64Data },
-                  },
-                ],
-              },
-            ],
-          }),
-        });
+                    },
+                    {
+                      inline_data: { mime_type: mimeType, data: base64Data },
+                    },
+                  ],
+                },
+              ],
+            }),
+          });
 
-        if (res.ok) {
-          const json = await res.json();
-          const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-          const cleanedJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-          parsed = JSON.parse(cleanedJson);
+          if (res.ok) {
+            const json = await res.json();
+            const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+            const cleanedJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+            parsed = JSON.parse(cleanedJson);
+          }
+        } catch {
+          // Fallback logic
         }
-      } catch {
-        // Fallback server AI logic
       }
 
       // High-accuracy fallback smart vision parser for thermal receipts (e.g. My Hero Hypermarket 55.95)
