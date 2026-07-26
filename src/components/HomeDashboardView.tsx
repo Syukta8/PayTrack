@@ -52,6 +52,14 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
 
   const monthName = new Date(yearNum, monthNum - 1, 1).toLocaleString("en-US", { month: "short" });
 
+  const rhythmTrendMap = new Map<number, number>();
+  let dynamicTax = 0;
+  let dynamicServiceCharge = 0;
+
+  // Dynamic distribution maps
+  const categoryMap = new Map<string, number>();
+  const subcategoryMap = new Map<string, number>();
+
   transactions.forEach((t) => {
     const isExpenseItem = t.type === "expense" || t.category !== "Salary";
     if (isExpenseItem) {
