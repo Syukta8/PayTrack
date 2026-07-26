@@ -206,3 +206,19 @@ verdicts with reasoning.
 
 Each role should explicitly state when it's handing off to another role and why (e.g.,
 "This needs Tester sign-off before merge").
+
+## Beneficial Global & Plugin Skills for PayTrack
+
+When working on this repository, agents should proactively leverage the following global skills and plugins available in the customization root (`~/.gemini/config/`):
+
+1. **`firebase-hosting-basics` / `firebase-firestore` / `firebase-auth-basics`**:
+   - Guidance for Firebase Authentication (Google Sign-In), Firestore rules/indexes, and deployment via Firebase Hosting CLI (`npx firebase deploy --only hosting`).
+2. **`react-patterns` / `react-ui-patterns`**:
+   - Modern React hooks patterns, component composition, async data fetching states, and presentation vs container separation following MVVM principles.
+3. **`typescript-expert` / `clean-code`**:
+   - Strict TypeScript type safety, type mirroring between frontend and backend `types.ts`, interface hygiene, and defensive null/undefined checks.
+4. **`web-performance-optimization` / `web-design-guidelines`**:
+   - Responsive UI design guidelines, mobile vs desktop layout synchronization, fast load times, and fluid micro-interactions.
+5. **`systematic-debugging` / `find-bugs`**:
+   - Root-cause error tracing, log inspection, empirical symptom verification, and defensive fix verification via `npm run build`.
+
