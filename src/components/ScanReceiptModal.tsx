@@ -14,6 +14,14 @@ interface ScanReceiptModalProps {
     imageUrl?: string;
     driveUrl?: string;
     paymentMethod?: string;
+    items?: Array<{
+      id: string;
+      name: string;
+      qty: number;
+      unitPrice: number;
+      totalPrice: number;
+      category?: string;
+    }>;
   }) => void;
 }
 
@@ -108,6 +116,13 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
         category: string;
         note: string;
         paymentMethod?: string;
+        items?: Array<{
+          name: string;
+          qty: number;
+          unitPrice: number;
+          totalPrice: number;
+          category?: string;
+        }>;
       } | null = null;
 
       // Primary Server AI Vision Endpoint
@@ -122,7 +137,7 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
                 {
                   parts: [
                     {
-                      text: `Analyze this receipt image and extract accurate financial info.
+                      text: `Analyze this receipt image and extract accurate financial info and itemized subitems.
 Return ONLY raw JSON matching this structure without markdown formatting:
 {
   "merchantName": "Store Name",
@@ -132,7 +147,16 @@ Return ONLY raw JSON matching this structure without markdown formatting:
   "date": "YYYY-MM-DD",
   "category": "Food & Dining" | "Shopping" | "Entertainment" | "Bills & Utilities" | "Personal" | "Transport",
   "paymentMethod": "Cash" | "QR code" | "Debit card" | "Credit card" | "SPayLater",
-  "note": "summary of store/location"
+  "note": "summary of store/location",
+  "items": [
+    {
+      "name": "Item Description",
+      "qty": 1,
+      "unitPrice": 10.00,
+      "totalPrice": 10.00,
+      "category": "Food & Dining"
+    }
+  ]
 }`,
                     },
                     {
@@ -166,12 +190,27 @@ Return ONLY raw JSON matching this structure without markdown formatting:
           category: "Shopping",
           paymentMethod: "SPayLater",
           note: "MY HERO HYPERMARKET SDN BHD (Taman Puncak Jalil)",
+          items: [
+            { name: "DUTCH LADY FULL CREAM 1L", qty: 2, unitPrice: 7.50, totalPrice: 15.00, category: "Groceries" },
+            { name: "GARDENIA WHOLEMEAL BREAD", qty: 2, unitPrice: 3.80, totalPrice: 7.60, category: "Groceries" },
+            { name: "FRESH FUJI APPLES (5PK)", qty: 1, unitPrice: 12.90, totalPrice: 12.90, category: "Groceries" },
+            { name: "JASMINE SUPER 88 RICE 5KG", qty: 1, unitPrice: 20.45, totalPrice: 20.45, category: "Groceries" },
+          ],
         };
       }
 
       const dateStr = parsed.date || new Date().toISOString().split("T")[0];
       const receiptId = `rcpt_${Date.now().toString(36)}`;
       const driveFolder = `PayTrack_Receipts/${dateStr.slice(0, 4)}/${dateStr.slice(5, 7)}/${receiptId}.jpg`;
+
+      const mappedItems = (parsed.items || []).map((it, idx) => ({
+        id: `item_${Date.now().toString(36)}_${idx}`,
+        name: it.name || `Receipt Item #${idx + 1}`,
+        qty: Number(it.qty) || 1,
+        unitPrice: Number(it.unitPrice) || Number(it.totalPrice) || 0,
+        totalPrice: Number(it.totalPrice) || (Number(it.qty) || 1) * (Number(it.unitPrice) || 0),
+        category: it.category || parsed?.category || "Shopping",
+      }));
 
       onReceiptScanned({
         amount: Number(parsed.totalAmount) || 0,
@@ -184,6 +223,7 @@ Return ONLY raw JSON matching this structure without markdown formatting:
         paymentMethod: parsed.paymentMethod || "Cash",
         imageUrl: optimizedImage || selectedImage,
         driveUrl: `Google Drive: ${driveFolder}`,
+        items: mappedItems,
       });
 
       handleClose();

@@ -5,6 +5,15 @@ export type MaintenanceHealth = Exclude<BillHealth, "paid">;
 
 export const PAYMENT_TYPES = ["Online banking", "QR code", "Debit card", "Credit card", "SPayLater", "Cash"] as const;
 
+export interface ReceiptItem {
+  id: string;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  totalPrice: number;
+  category?: string;
+}
+
 export interface Transaction {
   id: string;
   date: string;
@@ -19,6 +28,7 @@ export interface Transaction {
   driveUrl?: string;
   tax?: number;
   serviceCharge?: number;
+  items?: ReceiptItem[];
 }
 
 export interface RecurringBill {

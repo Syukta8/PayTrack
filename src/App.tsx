@@ -14,8 +14,8 @@ import { MaintenanceView } from "./components/MaintenanceView";
 import { ScanReceiptModal } from "./components/ScanReceiptModal";
 import { PasteSmsModal } from "./components/PasteSmsModal";
 import { StatementReconciliationModal } from "./components/StatementReconciliationModal";
-import { saveReceiptImage } from "./model/imageStore";
-import type { Transaction } from "./model/types";
+import { saveReceiptImage, saveReceiptItems } from "./model/imageStore";
+import type { Transaction, ReceiptItem } from "./model/types";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -39,6 +39,7 @@ export default function App() {
     note?: string;
     imageUrl?: string;
     driveUrl?: string;
+    items?: ReceiptItem[];
   } | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     return (localStorage.getItem("paytrack.theme") as ThemeMode) || "system";
@@ -96,11 +97,21 @@ export default function App() {
     note: string;
     imageUrl?: string;
     driveUrl?: string;
+    items?: ReceiptItem[];
   }) => {
     if (!vm.tracker) return;
     try {
       const drivePath = formData.driveUrl || scannedData?.driveUrl || `Google Drive: PayTrack_Receipts/${formData.date.slice(0, 4)}/${formData.date.slice(5, 7)}/receipt_${Date.now().toString(36)}.jpg`;
       const imgData = formData.imageUrl || scannedData?.imageUrl;
+      const subitems = formData.items || scannedData?.items;
+
+      let remarksPayload = drivePath;
+      if (subitems && subitems.length > 0) {
+        const compactJson = JSON.stringify(subitems.map((i: ReceiptItem) => ({ n: i.name, q: i.qty, p: i.unitPrice, t: i.totalPrice })));
+        if (compactJson.length < 500) {
+          remarksPayload += ` | ITEMS:${compactJson}`;
+        }
+      }
 
       const createdId = await vm.tracker.addTransaction({
         date: formData.date,
@@ -109,13 +120,18 @@ export default function App() {
         category: formData.category,
         paymentType: formData.paymentMethod,
         description: formData.note,
-        remarks: drivePath,
+        remarks: remarksPayload,
         imageUrl: drivePath,
         driveUrl: drivePath,
       });
 
-      if (imgData && createdId) {
-        await saveReceiptImage(createdId, imgData);
+      if (createdId) {
+        if (imgData) {
+          await saveReceiptImage(createdId, imgData);
+        }
+        if (subitems && subitems.length > 0) {
+          await saveReceiptItems(createdId, subitems);
+        }
       }
       await vm.reload();
     } catch (err) {

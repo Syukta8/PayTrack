@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import type { Transaction } from "../model/types";
-import { getReceiptImage } from "../model/imageStore";
+import type { Transaction, ReceiptItem } from "../model/types";
+import { getReceiptImage, getReceiptItems } from "../model/imageStore";
 
 interface ReceiptDetailsViewProps {
   receipt: Transaction;
@@ -14,33 +14,49 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
   const [activeTab, setActiveTab] = useState<"details" | "analysis" | "image">("details");
   const [searchQuery, setSearchQuery] = useState("");
   const [localImage, setLocalImage] = useState<string | null>(null);
+  const [subitems, setSubitems] = useState<ReceiptItem[]>([]);
 
   useEffect(() => {
     let isMounted = true;
     if (receipt.id) {
       getReceiptImage(receipt.id).then((stored) => {
-        if (isMounted && stored) {
-          setLocalImage(stored);
+        if (isMounted && stored) setLocalImage(stored);
+      });
+
+      getReceiptItems(receipt.id).then((storedItems) => {
+        if (isMounted) {
+          if (storedItems && storedItems.length > 0) {
+            setSubitems(storedItems);
+          } else if (receipt.items && receipt.items.length > 0) {
+            setSubitems(receipt.items);
+          } else if (receipt.remarks && receipt.remarks.includes("| ITEMS:")) {
+            try {
+              const rawJson = receipt.remarks.split("| ITEMS:")[1]?.trim();
+              if (rawJson) {
+                const parsedShort = JSON.parse(rawJson);
+                const restored: ReceiptItem[] = parsedShort.map((it: { n: string; q: number; p: number; t: number }, idx: number) => ({
+                  id: `item_restored_${idx}`,
+                  name: it.n || `Item #${idx + 1}`,
+                  qty: it.q || 1,
+                  unitPrice: it.p || 0,
+                  totalPrice: it.t || 0,
+                  category: receipt.category,
+                }));
+                setSubitems(restored);
+              }
+            } catch {
+              // Ignore JSON parse error
+            }
+          }
         }
       });
     }
     return () => {
       isMounted = false;
     };
-  }, [receipt.id]);
+  }, [receipt.id, receipt.items, receipt.remarks, receipt.category]);
 
-  const items: Array<{
-    id: string;
-    name: string;
-    qty: number;
-    unitPrice: number;
-    totalPrice: number;
-    category: string;
-    subcategory: string;
-    tags: string;
-  }> = [];
-
-  const filteredItems = items.filter((item) =>
+  const filteredItems = subitems.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -172,7 +188,7 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
 
                 <div className="item-field-row">
                   <span>Quantity</span>
-                  <span>{item.qty.toFixed(1)}</span>
+                  <span>{item.qty}</span>
                 </div>
                 <div className="item-field-row">
                   <span>Unit Price</span>
@@ -185,15 +201,7 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
 
                 <div className="item-field-row" style={{ borderTop: "1px solid var(--border-subtle)", marginTop: 8, paddingTop: 6 }}>
                   <span>Category</span>
-                  <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.category}</span>
-                </div>
-                <div className="item-field-row">
-                  <span>Subcategory</span>
-                  <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.subcategory}</span>
-                </div>
-                <div className="item-field-row">
-                  <span>Tags</span>
-                  <span style={{ fontStyle: "italic" }}>{item.tags}</span>
+                  <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.category || receipt.category}</span>
                 </div>
               </div>
             ))

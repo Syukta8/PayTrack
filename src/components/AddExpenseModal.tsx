@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import type { ReceiptItem } from "../model/types";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface AddExpenseModalProps {
     note: string;
     imageUrl?: string;
     driveUrl?: string;
+    items?: ReceiptItem[];
   }) => void;
   initialData?: {
     amount?: number;
@@ -21,6 +23,7 @@ interface AddExpenseModalProps {
     note?: string;
     imageUrl?: string;
     driveUrl?: string;
+    items?: ReceiptItem[];
   } | null;
 }
 
@@ -59,6 +62,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [note, setNote] = useState("");
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [driveUrl, setDriveUrl] = useState<string | undefined>(undefined);
+  const [items, setItems] = useState<ReceiptItem[] | undefined>(undefined);
 
   useEffect(() => {
     if (initialData) {
@@ -71,9 +75,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       }
       setImageUrl(initialData.imageUrl);
       setDriveUrl(initialData.driveUrl);
+      setItems(initialData.items);
     } else {
       setImageUrl(undefined);
       setDriveUrl(undefined);
+      setItems(undefined);
     }
   }, [initialData]);
 
@@ -104,6 +110,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       note: finalNote,
       imageUrl,
       driveUrl,
+      items,
     });
     // Reset state values after saving
     setAmountStr("0.00");
@@ -113,6 +120,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     setNote("");
     setImageUrl(undefined);
     setDriveUrl(undefined);
+    setItems(undefined);
     onClose();
   };
 
