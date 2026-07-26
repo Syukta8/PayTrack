@@ -437,6 +437,7 @@ export default function App() {
               }}
               onSubmit={handleAddTransactionSubmit}
               initialData={scannedData}
+              existingTransactions={transactions}
             />
           </>
         )}

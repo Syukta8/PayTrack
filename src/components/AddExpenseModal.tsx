@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { describeDuplicate, findDuplicates } from "../model/duplicateGuard";
 import { PAYMENT_TYPES, normalizePaymentType } from "../model/types";
-import type { ReceiptItem } from "../model/types";
+import type { ReceiptItem, Transaction } from "../model/types";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -31,6 +32,8 @@ interface AddExpenseModalProps {
     serviceCharge?: number;
     items?: ReceiptItem[];
   } | null;
+  /** Already-recorded transactions, used only to warn about a probable duplicate scan. */
+  existingTransactions?: Transaction[];
 }
 
 const EXPENSE_CATEGORIES = [
@@ -58,6 +61,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   onClose,
   onSubmit,
   initialData,
+  existingTransactions,
 }) => {
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amountStr, setAmountStr] = useState("0.00");
@@ -101,6 +105,18 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
   const activeCategories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
+  const rawAmount = parseFloat(amountStr) || 0;
+  const spayFeeRate = selectedPayment === "SPayLater" && spayTenure > 1 ? 0.015 * spayTenure : 0;
+  const effectiveAmount = selectedPayment === "SPayLater" ? rawAmount * (1 + spayFeeRate) : rawAmount;
+
+  /** Compared against the amount that would actually be written, so an SPayLater entry is
+   * matched on its fee-inclusive total rather than the pre-fee figure. */
+  const duplicateWarning = useMemo(() => {
+    if (!existingTransactions?.length || effectiveAmount <= 0) return null;
+    const candidate = { date, amount: effectiveAmount, description: note, type };
+    return describeDuplicate(findDuplicates(existingTransactions, candidate), candidate);
+  }, [existingTransactions, effectiveAmount, date, note, type]);
+
   const handleTypeChange = (newType: "expense" | "income") => {
     setType(newType);
     setSelectedCategory(newType === "expense" ? "Food & Dining" : "Salary");
@@ -109,15 +125,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   if (!isOpen) return null;
 
   const handleSave = () => {
-    const rawAmount = parseFloat(amountStr) || 0;
-    const feeRate = selectedPayment === "SPayLater" && spayTenure > 1 ? 0.015 * spayTenure : 0;
-    const totalAmount = rawAmount * (1 + feeRate);
-
     const finalNote = note;
 
     onSubmit({
       type,
-      amount: selectedPayment === "SPayLater" ? totalAmount : rawAmount,
+      amount: effectiveAmount,
       category: selectedCategory,
       paymentMethod: selectedPayment,
       date,
@@ -155,6 +167,25 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             Cancel
           </button>
         </div>
+
+        {/* Advisory only: a genuine repeat purchase is still saveable. */}
+        {duplicateWarning && (
+          <div
+            style={{
+              backgroundColor: "rgba(245, 158, 11, 0.10)",
+              border: "1px solid #fbbf24",
+              color: "#92400e",
+              padding: "10px 12px",
+              borderRadius: 10,
+              fontSize: "0.78rem",
+              marginBottom: 16,
+              textAlign: "left",
+              lineHeight: 1.5,
+            }}
+          >
+            ⚠️ {duplicateWarning}
+          </div>
+        )}
 
         {/* Expense / Income Pill Toggle */}
         <div className="segmented-pill" style={{ display: "flex", width: "100%", marginBottom: 24, padding: 4 }}>

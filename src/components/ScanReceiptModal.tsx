@@ -275,6 +275,21 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
           >
             {isScanning ? "🤖 AI Scanner Processing..." : "✨ Scan & Extract Receipt"}
           </button>
+
+          {/* Extraction is a best-effort reading, not a guarantee. Say so where the user is
+              about to accept the numbers. */}
+          <p
+            style={{
+              margin: "10px 0 0",
+              fontSize: "0.7rem",
+              color: "var(--text-muted)",
+              textAlign: "center",
+              lineHeight: 1.5,
+            }}
+          >
+            Extracted values are a best-effort reading and can be wrong — check the amount and
+            date on the next screen before saving.
+          </p>
         </div>
       </div>
     </div>
