@@ -128,7 +128,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
           RM{remainingBalance.toFixed(2)}
         </div>
 
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", margin: "10px 0 14px" }}>
+        <div style={{ display: "flex", gap: 12, justifyContent: "flex-start", margin: "10px 0 14px" }}>
           <div style={{ padding: "6px 14px", background: "rgba(255,255,255,0.7)", borderRadius: 12, fontSize: "0.82rem", fontWeight: 700 }}>
             <span style={{ color: "var(--text-muted)", marginRight: 6 }}>Total Expense:</span>
             <span style={{ color: "#ef4444" }}>RM{totalExpense.toFixed(2)}</span>
