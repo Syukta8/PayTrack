@@ -39,6 +39,9 @@ export default function App() {
     note?: string;
     imageUrl?: string;
     driveUrl?: string;
+    paymentMethod?: string;
+    tax?: number;
+    serviceCharge?: number;
     items?: ReceiptItem[];
   } | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
@@ -97,6 +100,8 @@ export default function App() {
     note: string;
     imageUrl?: string;
     driveUrl?: string;
+    tax?: number;
+    serviceCharge?: number;
     items?: ReceiptItem[];
   }) => {
     if (!vm.tracker) return;
@@ -123,6 +128,8 @@ export default function App() {
         remarks: remarksPayload,
         imageUrl: drivePath,
         driveUrl: drivePath,
+        tax: formData.tax ?? scannedData?.tax ?? 0,
+        serviceCharge: formData.serviceCharge ?? scannedData?.serviceCharge ?? 0,
       });
 
       if (createdId) {

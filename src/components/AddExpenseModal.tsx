@@ -13,6 +13,8 @@ interface AddExpenseModalProps {
     note: string;
     imageUrl?: string;
     driveUrl?: string;
+    tax?: number;
+    serviceCharge?: number;
     items?: ReceiptItem[];
   }) => void;
   initialData?: {
@@ -23,6 +25,9 @@ interface AddExpenseModalProps {
     note?: string;
     imageUrl?: string;
     driveUrl?: string;
+    paymentMethod?: string;
+    tax?: number;
+    serviceCharge?: number;
     items?: ReceiptItem[];
   } | null;
 }
@@ -63,6 +68,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
   const [driveUrl, setDriveUrl] = useState<string | undefined>(undefined);
   const [items, setItems] = useState<ReceiptItem[] | undefined>(undefined);
+  const [tax, setTax] = useState(0);
+  const [serviceCharge, setServiceCharge] = useState(0);
 
   useEffect(() => {
     if (initialData) {
@@ -76,10 +83,14 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       setImageUrl(initialData.imageUrl);
       setDriveUrl(initialData.driveUrl);
       setItems(initialData.items);
+      setTax(initialData.tax ?? 0);
+      setServiceCharge(initialData.serviceCharge ?? 0);
     } else {
       setImageUrl(undefined);
       setDriveUrl(undefined);
       setItems(undefined);
+      setTax(0);
+      setServiceCharge(0);
     }
   }, [initialData]);
 
@@ -108,6 +119,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       note: finalNote,
       imageUrl,
       driveUrl,
+      tax,
+      serviceCharge,
       items,
     });
     // Reset state values after saving
@@ -119,6 +132,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     setImageUrl(undefined);
     setDriveUrl(undefined);
     setItems(undefined);
+    setTax(0);
+    setServiceCharge(0);
     onClose();
   };
 

@@ -99,8 +99,17 @@ export class SheetsRepository implements SheetsStore {
       const actual = result.values?.[0] ?? [];
       if (actual.length === 0) {
         await this.request(`/values/${encodeURIComponent(`${sheet.tab}!A1`)}?valueInputOption=RAW`, { method: "PUT", body: JSON.stringify({ values: [expected] }) });
-      } else if (actual.slice(0, expected.length).join(",") !== expected.join(",")) {
+        return;
+      }
+      // Columns are only ever appended to a schema, so a sheet written by an older PayTrack
+      // version is a valid prefix of the current one: extend its header instead of rejecting
+      // the whole spreadsheet. Only a genuine mismatch inside the shared prefix is fatal.
+      const shared = Math.min(actual.length, expected.length);
+      if (actual.slice(0, shared).join(",") !== expected.slice(0, shared).join(",")) {
         throw new Error(`The ${sheet.tab} header does not match the PayTrack template. Create a new blank Sheet or correct row 1 before connecting.`);
+      }
+      if (actual.length < expected.length) {
+        await this.request(`/values/${encodeURIComponent(`${sheet.tab}!A1`)}?valueInputOption=RAW`, { method: "PUT", body: JSON.stringify({ values: [expected] }) });
       }
     }));
   }
