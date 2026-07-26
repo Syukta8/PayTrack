@@ -17,7 +17,8 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
   onClose,
   onReceiptScanned,
 }) => {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem("paytrack.geminiApiKey") || "");
   const [isScanning, setIsScanning] = useState(false);
@@ -174,11 +175,21 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
 
         {/* Upload Container */}
         <div className="form-field-card" style={{ padding: 18 }}>
+          {/* Camera input (forces camera on mobile) */}
           <input
-            ref={fileInputRef}
+            ref={cameraInputRef}
             type="file"
             accept="image/*"
             capture="environment"
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
+
+          {/* Gallery file upload input (opens file picker on phone/desktop) */}
+          <input
+            ref={galleryInputRef}
+            type="file"
+            accept="image/*"
             onChange={handleFileChange}
             style={{ display: "none" }}
           />
@@ -198,56 +209,101 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
                   }}
                 />
               </div>
-              <div style={{ marginTop: 10 }}>
+              <div style={{ marginTop: 10, display: "flex", justifyContent: "center", gap: 8 }}>
                 <button
                   className="pill-btn"
-                  style={{ fontSize: "0.76rem", padding: "6px 14px", fontWeight: 600 }}
-                  onClick={() => fileInputRef.current?.click()}
+                  style={{ fontSize: "0.76rem", padding: "6px 12px", fontWeight: 600 }}
+                  onClick={() => cameraInputRef.current?.click()}
                 >
-                  🔄 Retake / Choose Other Image
+                  📷 Retake Photo
+                </button>
+                <button
+                  className="pill-btn"
+                  style={{ fontSize: "0.76rem", padding: "6px 12px", fontWeight: 600 }}
+                  onClick={() => galleryInputRef.current?.click()}
+                >
+                  🖼️ Upload Other File
                 </button>
               </div>
             </div>
           ) : (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                width: "100%",
-                padding: "32px 16px",
-                border: "2px dashed var(--border-light)",
-                borderRadius: 16,
-                backgroundColor: "var(--bg-subtle)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 16,
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-              }}
-            >
-              <div
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+              <button
+                onClick={() => cameraInputRef.current?.click()}
                 style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: "50%",
-                  backgroundColor: "#ffffff",
+                  padding: "24px 12px",
+                  border: "2px dashed var(--border-light)",
+                  borderRadius: 16,
+                  backgroundColor: "var(--bg-subtle)",
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1.6rem",
-                  boxShadow: "var(--shadow-sm)",
+                  gap: 8,
+                  cursor: "pointer",
+                  textAlign: "center",
                 }}
               >
-                📸
-              </div>
-              <span style={{ fontSize: "0.98rem", fontWeight: 800, color: "var(--text-main)" }}>
-                Snap Photo or Upload Receipt
-              </span>
-              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                Supports JPG, PNG, WEBP receipts & invoices
-              </span>
-            </button>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: "50%",
+                    backgroundColor: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.4rem",
+                    boxShadow: "var(--shadow-sm)",
+                  }}
+                >
+                  📷
+                </div>
+                <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--text-main)" }}>
+                  Snap Photo
+                </span>
+                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                  Use mobile camera
+                </span>
+              </button>
+
+              <button
+                onClick={() => galleryInputRef.current?.click()}
+                style={{
+                  padding: "24px 12px",
+                  border: "2px dashed var(--border-light)",
+                  borderRadius: 16,
+                  backgroundColor: "var(--bg-subtle)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 8,
+                  cursor: "pointer",
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: "50%",
+                    backgroundColor: "#ffffff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "1.4rem",
+                    boxShadow: "var(--shadow-sm)",
+                  }}
+                >
+                  🖼️
+                </div>
+                <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--text-main)" }}>
+                  Upload Image
+                </span>
+                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                  Choose from gallery
+                </span>
+              </button>
+            </div>
           )}
 
           {/* Gemini API Key Box */}
