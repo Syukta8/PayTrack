@@ -7,14 +7,6 @@ interface ReceiptDetailsViewProps {
   onBack: () => void;
 }
 
-const SUBCATEGORY_PROPORTIONS = [
-  { name: "Pantry Staples", val: 41, color: "#000000", amount: "86.41" },
-  { name: "Dairy & Eggs", val: 40, color: "#cbd5e1", amount: "82.85" },
-  { name: "Fruits & Vegetables", val: 11, color: "#f97316", amount: "23.90" },
-  { name: "Hobbies & Toys", val: 5, color: "#ef4444", amount: "10.90" },
-  { name: "Bakery & Bread", val: 2, color: "#a855f7", amount: "5.00" },
-];
-
 export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
   receipt,
   onBack,
@@ -22,48 +14,16 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
   const [activeTab, setActiveTab] = useState<"details" | "analysis" | "image">("details");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const items = [
-    {
-      id: "1",
-      name: "CURRY MEE",
-      qty: 1.0,
-      unitPrice: 19.9,
-      totalPrice: 19.9,
-      category: "Dining & Takeout",
-      subcategory: "Restaurant",
-      tags: "curry mee, noodles, malaysian food, meal",
-    },
-    {
-      id: "2",
-      name: "DRY WANTON MEE WITH CHICKEN SLIDE",
-      qty: 1.0,
-      unitPrice: 16.9,
-      totalPrice: 16.9,
-      category: "Dining & Takeout",
-      subcategory: "Restaurant",
-      tags: "wanton mee, chicken, noodles, malaysian food",
-    },
-    {
-      id: "3",
-      name: "BARLEY HOT",
-      qty: 1.0,
-      unitPrice: 5.9,
-      totalPrice: 5.9,
-      category: "Dining & Takeout",
-      subcategory: "Restaurant",
-      tags: "barley, hot drink, beverage",
-    },
-    {
-      id: "4",
-      name: "TEH TARIK",
-      qty: 1.0,
-      unitPrice: 4.5,
-      totalPrice: 4.5,
-      category: "Dining & Takeout",
-      subcategory: "Restaurant",
-      tags: "teh tarik, tea, beverage",
-    },
-  ];
+  const items: Array<{
+    id: string;
+    name: string;
+    qty: number;
+    unitPrice: number;
+    totalPrice: number;
+    category: string;
+    subcategory: string;
+    tags: string;
+  }> = [];
 
   const filteredItems = items.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -187,94 +147,52 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
           </div>
 
           {/* Itemized Cards */}
-          {filteredItems.map((item, index) => (
-            <div className="item-card" key={item.id}>
-              <div className="item-card-index">{index + 1}/4</div>
-              <div className="item-card-title">{item.name}</div>
+          {filteredItems.length > 0 ? (
+            filteredItems.map((item, index) => (
+              <div className="item-card" key={item.id}>
+                <div className="item-card-index">{index + 1}/{filteredItems.length}</div>
+                <div className="item-card-title">{item.name}</div>
 
-              <div className="item-field-row">
-                <span>Quantity</span>
-                <span>{item.qty.toFixed(1)}</span>
-              </div>
-              <div className="item-field-row">
-                <span>Unit Price</span>
-                <span>RM{item.unitPrice.toFixed(2)}</span>
-              </div>
-              <div className="item-field-row strong">
-                <span>Total Price</span>
-                <span>RM{item.totalPrice.toFixed(2)}</span>
-              </div>
+                <div className="item-field-row">
+                  <span>Quantity</span>
+                  <span>{item.qty.toFixed(1)}</span>
+                </div>
+                <div className="item-field-row">
+                  <span>Unit Price</span>
+                  <span>RM{item.unitPrice.toFixed(2)}</span>
+                </div>
+                <div className="item-field-row strong">
+                  <span>Total Price</span>
+                  <span>RM{item.totalPrice.toFixed(2)}</span>
+                </div>
 
-              <div className="item-field-row" style={{ borderTop: "1px solid var(--border-subtle)", marginTop: 8, paddingTop: 6 }}>
-                <span>Category</span>
-                <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.category}</span>
+                <div className="item-field-row" style={{ borderTop: "1px solid var(--border-subtle)", marginTop: 8, paddingTop: 6 }}>
+                  <span>Category</span>
+                  <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.category}</span>
+                </div>
+                <div className="item-field-row">
+                  <span>Subcategory</span>
+                  <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.subcategory}</span>
+                </div>
+                <div className="item-field-row">
+                  <span>Tags</span>
+                  <span style={{ fontStyle: "italic" }}>{item.tags}</span>
+                </div>
               </div>
-              <div className="item-field-row">
-                <span>Subcategory</span>
-                <span style={{ fontWeight: 600, color: "var(--text-main)" }}>{item.subcategory}</span>
-              </div>
-              <div className="item-field-row">
-                <span>Tags</span>
-                <span style={{ fontStyle: "italic" }}>{item.tags}</span>
-              </div>
+            ))
+          ) : (
+            <div className="section-card" style={{ textAlign: "center", padding: "30px 20px", color: "var(--text-muted)", fontSize: "0.88rem" }}>
+              No itemized breakdown for this receipt.
             </div>
-          ))}
+          )}
         </div>
       )}
 
       {activeTab === "analysis" && (
         <div style={{ marginTop: 16 }}>
-          {/* Subcategory Proportions Card */}
-          <div className="section-card">
-            <div className="section-card-title">Subcategory Proportions</div>
-
-            <div style={{ height: 220, marginTop: 10 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={SUBCATEGORY_PROPORTIONS}
-                    dataKey="val"
-                    nameKey="name"
-                    innerRadius={50}
-                    outerRadius={85}
-                    paddingAngle={2}
-                  >
-                    {SUBCATEGORY_PROPORTIONS.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.color} />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-              {SUBCATEGORY_PROPORTIONS.map((item) => (
-                <div key={item.name} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.82rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: item.color }} />
-                    <span>{item.name}</span>
-                  </div>
-                  <span style={{ fontWeight: 800 }}>RM{item.amount}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Subcategory Comparison Bar Chart */}
-          <div className="section-card">
-            <div className="section-card-title">Subcategory Comparison</div>
-            <div style={{ height: 200, marginTop: 16 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={SUBCATEGORY_PROPORTIONS} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fontSize: 9 }} hide />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `RM${v}`} />
-                  <Bar dataKey="val" radius={[4, 4, 0, 0]}>
-                    {SUBCATEGORY_PROPORTIONS.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+          <div className="section-card" style={{ textAlign: "center", padding: "40px 20px" }}>
+            <div style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
+              No item breakdown analysis available for this transaction.
             </div>
           </div>
         </div>
