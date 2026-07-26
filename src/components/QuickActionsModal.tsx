@@ -5,6 +5,8 @@ interface QuickActionsModalProps {
   onClose: () => void;
   onOpenAddTransaction: () => void;
   onOpenScanReceipt: () => void;
+  onOpenPasteSms: () => void;
+  onOpenStatementReconcile: () => void;
 }
 
 export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
@@ -12,6 +14,8 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
   onClose,
   onOpenAddTransaction,
   onOpenScanReceipt,
+  onOpenPasteSms,
+  onOpenStatementReconcile,
 }) => {
   if (!isOpen) return null;
 
@@ -55,6 +59,34 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
             </div>
             <span className="tile-title">Scan Receipt</span>
             <span className="tile-sub">AI-powered OCR capture</span>
+          </button>
+
+          <button
+            className="action-tile"
+            onClick={() => {
+              onClose();
+              onOpenPasteSms();
+            }}
+          >
+            <div className="tile-icon-box" style={{ backgroundColor: "rgba(16, 185, 129, 0.12)", color: "#10b981" }}>
+              📱
+            </div>
+            <span className="tile-title">Paste Bank SMS</span>
+            <span className="tile-sub">Auto-parse copied text</span>
+          </button>
+
+          <button
+            className="action-tile"
+            onClick={() => {
+              onClose();
+              onOpenStatementReconcile();
+            }}
+          >
+            <div className="tile-icon-box" style={{ backgroundColor: "rgba(99, 102, 241, 0.12)", color: "#6366f1" }}>
+              📄
+            </div>
+            <span className="tile-title">Reconcile Statement</span>
+            <span className="tile-sub">Upload bank PDF / CSV</span>
           </button>
         </div>
       </div>

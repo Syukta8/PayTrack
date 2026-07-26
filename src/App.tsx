@@ -12,6 +12,8 @@ import { QuickActionsModal } from "./components/QuickActionsModal";
 import { BillsView } from "./components/BillsView";
 import { MaintenanceView } from "./components/MaintenanceView";
 import { ScanReceiptModal } from "./components/ScanReceiptModal";
+import { PasteSmsModal } from "./components/PasteSmsModal";
+import { StatementReconciliationModal } from "./components/StatementReconciliationModal";
 import type { Transaction } from "./model/types";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -26,6 +28,8 @@ export default function App() {
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
+  const [isPasteSmsOpen, setIsPasteSmsOpen] = useState(false);
+  const [isStatementOpen, setIsStatementOpen] = useState(false);
   const [scannedData, setScannedData] = useState<{
     amount?: number;
     category?: string;
@@ -342,6 +346,8 @@ export default function App() {
                 setIsAddModalOpen(true);
               }}
               onOpenScanReceipt={() => setIsScanModalOpen(true)}
+              onOpenPasteSms={() => setIsPasteSmsOpen(true)}
+              onOpenStatementReconcile={() => setIsStatementOpen(true)}
             />
 
             {/* AI Receipt Scanner Modal */}
@@ -352,6 +358,44 @@ export default function App() {
                 setScannedData(parsed);
                 setIsScanModalOpen(false);
                 setIsAddModalOpen(true);
+              }}
+            />
+
+            {/* Paste Bank SMS Modal */}
+            <PasteSmsModal
+              isOpen={isPasteSmsOpen}
+              onClose={() => setIsPasteSmsOpen(false)}
+              onSmsParsed={(parsed) => {
+                setScannedData({
+                  amount: parsed.amount,
+                  category: parsed.category,
+                  description: parsed.description,
+                  date: parsed.date,
+                  note: parsed.description,
+                });
+                setIsPasteSmsOpen(false);
+                setIsAddModalOpen(true);
+              }}
+            />
+
+            {/* Bank Statement Reconciliation Modal */}
+            <StatementReconciliationModal
+              isOpen={isStatementOpen}
+              onClose={() => setIsStatementOpen(false)}
+              onImportReconciledItems={async (items) => {
+                if (!vm.tracker) return;
+                for (const item of items) {
+                  await vm.tracker.addTransaction({
+                    date: item.date,
+                    type: "expense",
+                    category: item.category,
+                    amount: item.amount,
+                    description: item.description,
+                    paymentType: item.paymentMethod,
+                    remarks: "Reconciled from Bank Statement",
+                  });
+                }
+                await vm.reload();
               }}
             />
 
