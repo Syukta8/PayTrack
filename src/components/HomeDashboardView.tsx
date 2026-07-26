@@ -36,16 +36,21 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   // Remaining Balance = Salary Income - Total Expense
   const remainingBalance = salaryIncome - totalExpense;
 
-  // Calculate dynamic daily spending trend for AreaChart from Google Sheet transactions
-  const rhythmTrendMap = new Map<number, number>();
-  const currentMonthPrefix = new Date().toISOString().slice(0, 7);
+  // Calculate dynamic timeline for AreaChart based on transactions date range or current month
+  let targetYearMonth = new Date().toISOString().slice(0, 7);
+  if (transactions.length > 0) {
+    const dates = transactions.map((t) => t.date).filter(Boolean).sort();
+    if (dates.length > 0) {
+      targetYearMonth = dates[dates.length - 1].slice(0, 7); // Use latest transaction month
+    }
+  }
 
-  let dynamicTax = 0;
-  let dynamicServiceCharge = 0;
+  const [yearStr, monthStr] = targetYearMonth.split("-");
+  const yearNum = parseInt(yearStr, 10);
+  const monthNum = parseInt(monthStr, 10);
+  const totalDaysInMonth = new Date(yearNum, monthNum, 0).getDate();
 
-  // Dynamic distribution maps
-  const categoryMap = new Map<string, number>();
-  const subcategoryMap = new Map<string, number>();
+  const monthName = new Date(yearNum, monthNum - 1, 1).toLocaleString("en-US", { month: "short" });
 
   transactions.forEach((t) => {
     const isExpenseItem = t.type === "expense" || t.category !== "Salary";
@@ -72,7 +77,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
         dynamicServiceCharge += t.amount * 0.04;
       }
 
-      if (t.date.startsWith(currentMonthPrefix)) {
+      if (t.date.startsWith(targetYearMonth)) {
         const day = parseInt(t.date.slice(-2), 10);
         if (!isNaN(day)) {
           rhythmTrendMap.set(day, (rhythmTrendMap.get(day) || 0) + t.amount);
@@ -81,8 +86,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
     }
   });
 
-  const daysInMonth = new Date().getDate();
-  const rhythmTrendData = Array.from({ length: daysInMonth }, (_, index) => {
+  const rhythmTrendData = Array.from({ length: totalDaysInMonth }, (_, index) => {
     const dayNum = index + 1;
     return {
       day: dayNum,
@@ -103,15 +107,15 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
     fill: BAR_COLORS[idx % BAR_COLORS.length],
   }));
 
-  const firstDayStr = `${currentMonthPrefix}-01`;
-  const lastDayStr = `${currentMonthPrefix}-${String(daysInMonth).padStart(2, "0")}`;
+  const firstDayStr = `${targetYearMonth}-01`;
+  const lastDayStr = `${targetYearMonth}-${String(totalDaysInMonth).padStart(2, "0")}`;
 
   return (
     <div>
       {/* Pastel Gradient Header */}
       <div className="hero-gradient-header">
         <button className="month-dropdown-btn">
-          <span>This Month</span>
+          <span>This Month ({monthName} {yearNum})</span>
           <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
           </svg>
@@ -165,7 +169,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                         }}
                       >
-                        <div style={{ color: "#94a3b8", fontWeight: 600 }}>Day {dataPoint.day} Oct 2026</div>
+                        <div style={{ color: "#94a3b8", fontWeight: 600 }}>Day {dataPoint.day} {monthName} {yearNum}</div>
                         <div style={{ fontWeight: 800, fontSize: "0.88rem" }}>
                           RM{Number(dataPoint.val).toFixed(2)}
                         </div>
