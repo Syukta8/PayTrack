@@ -94,10 +94,18 @@ button {
 }
 
 @media (min-width: 768px) {
+  .app-viewport {
+    padding: 24px 0;
+  }
   .app-container {
-    max-width: 720px;
+    max-width: 640px;
     margin: 0 auto;
-    padding: 20px 20px 100px;
+    border-radius: 28px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+    min-height: auto;
+    padding-bottom: 90px;
   }
 }
 
@@ -284,9 +292,11 @@ button {
 
 @media (min-width: 768px) {
   .bottom-nav-bar {
-    max-width: 720px;
+    max-width: 640px;
     border-radius: var(--radius-lg);
     bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
   }
 }
 
@@ -454,6 +464,17 @@ button {
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: var(--shadow-md);
   box-sizing: border-box;
+}
+
+@media (min-width: 768px) {
+  .modal-overlay {
+    align-items: center;
+    padding: 20px;
+  }
+  .modal-sheet {
+    max-width: 480px;
+    border-radius: 28px;
+  }
 }
 
 .sheet-drag-handle {
