@@ -1,34 +1,34 @@
 import type { SheetEntity, SheetRecord } from "./sheetSchema";
 import type { RowRecord, SheetsStore } from "./sheets";
 
-const KEY = "paytrack.demo.data.v2";
+const KEY = "paytrack.demo.data.v3";
 type DemoData = { [K in SheetEntity]: SheetRecord<K>[] };
 
 function id(value: string): string { return `demo-${value}`; }
 function seed(): DemoData { 
   const currentMonthDate = `${new Date().toISOString().slice(0, 7)}-12`;
-  const aprilDate = "2026-04-27";
+  const mayDate = "2026-05-27";
 
   return {
     transactions: [
-      // April 2026 PDF Records
-      [aprilDate, "income", "Salary", 3203.45, "gaji april", "Online banking"],
-      [aprilDate, "expense", "Bills & Utilities", 250.00, "installment forte", "Online banking"],
-      [aprilDate, "expense", "Personal", 200.00, "bulanan mak", "Online banking"],
-      [aprilDate, "expense", "Personal", 150.00, "bulanan ayah", "Online banking"],
-      [aprilDate, "expense", "Food & Dining", 20.90, "ayam gepuk seremban 3", "Debit card"],
-      [aprilDate, "expense", "Bills & Utilities", 864.60, "spaylater", "Online banking"],
-      [aprilDate, "expense", "Food & Dining", 27.00, "lauk pasar tani", "QR code"],
-      [aprilDate, "expense", "Personal", 9.00, "dobi bubblelab", "QR code"],
-      [aprilDate, "expense", "Food & Dining", 7.90, "fries mydin", "QR code"],
-      [aprilDate, "expense", "Personal", 20.00, "tombol pintu", "QR code"],
-      [aprilDate, "expense", "Food & Dining", 20.00, "mi bandung x2", "QR code"],
-      [aprilDate, "expense", "Transport", 28.78, "tol balik muar", "QR code"],
-      [aprilDate, "expense", "Bills & Utilities", 10.78, "bil air", "Online banking"],
-      [aprilDate, "expense", "Bills & Utilities", 50.00, "bil letrik", "Online banking"],
-      [aprilDate, "expense", "Food & Dining", 8.90, "apple", "Online banking"],
-      [aprilDate, "expense", "Transport", 30.00, "shell kesang laut", "QR code"],
-      [aprilDate, "expense", "Food & Dining", 9.60, "gula2 station minyak", "QR code"],
+      // May 2026 PDF Records
+      [mayDate, "income", "Salary", 3203.45, "gaji mei", "Online banking"],
+      [mayDate, "expense", "Bills & Utilities", 250.00, "installment forte", "Online banking"],
+      [mayDate, "expense", "Personal", 200.00, "bulanan mak", "Online banking"],
+      [mayDate, "expense", "Personal", 150.00, "bulanan ayah", "Online banking"],
+      [mayDate, "expense", "Food & Dining", 20.90, "ayam gepuk seremban 3", "Debit card"],
+      [mayDate, "expense", "Bills & Utilities", 864.60, "spaylater", "Online banking"],
+      [mayDate, "expense", "Food & Dining", 27.00, "lauk pasar tani", "QR code"],
+      [mayDate, "expense", "Personal", 9.00, "dobi bubblelab", "QR code"],
+      [mayDate, "expense", "Food & Dining", 7.90, "fries mydin", "QR code"],
+      [mayDate, "expense", "Personal", 20.00, "tombol pintu", "QR code"],
+      [mayDate, "expense", "Food & Dining", 20.00, "mi bandung x2", "QR code"],
+      [mayDate, "expense", "Transport", 28.78, "tol balik muar", "QR code"],
+      [mayDate, "expense", "Bills & Utilities", 10.78, "bil air", "Online banking"],
+      [mayDate, "expense", "Bills & Utilities", 50.00, "bil letrik", "Online banking"],
+      [mayDate, "expense", "Food & Dining", 8.90, "apple", "Online banking"],
+      [mayDate, "expense", "Transport", 30.00, "shell kesang laut", "QR code"],
+      [mayDate, "expense", "Food & Dining", 9.60, "gula2 station minyak", "QR code"],
 
       // Current Month Records
       [currentMonthDate, "income", "Salary", 3203.45, "gaji bulan ini", "Online banking"],
