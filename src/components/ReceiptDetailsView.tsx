@@ -289,15 +289,26 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
 
       {/* Sticky Bottom Verification Footer */}
       <div className="sticky-bottom-action">
-        <div className="verified-banner">
-          <span>Subtotal Verified (RM43.70)</span>
-          <svg width="20" height="20" fill="#22c55e" viewBox="0 0 24 24">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-          </svg>
-        </div>
+        {(() => {
+          const itemsTotal = subitems.reduce((sum, item) => sum + item.totalPrice, 0);
+          const currentTotal = subitems.length > 0 ? itemsTotal : receipt.amount;
+
+          return (
+            <div
+              className="verified-banner"
+              onClick={onBack}
+              style={{ cursor: "pointer" }}
+            >
+              <span>Subtotal Verified (RM{currentTotal.toFixed(2)})</span>
+              <svg width="20" height="20" fill="#22c55e" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+              </svg>
+            </div>
+          );
+        })()}
 
         <button className="primary-dark-btn" onClick={onBack}>
-          Update Receipt
+          ✓ Done & Save
         </button>
       </div>
     </div>
