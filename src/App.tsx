@@ -246,6 +246,11 @@ export default function App() {
                   await vm.tracker.addBill(billInput);
                   await vm.reload();
                 }}
+                onUpdateBill={async (billId, billInput) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.updateBill(billId, billInput);
+                  await vm.reload();
+                }}
                 onDeleteBill={async (billId) => {
                   if (!vm.tracker) return;
                   await vm.tracker.deleteBill(billId);

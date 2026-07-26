@@ -11,6 +11,13 @@ interface BillsViewProps {
     dueDay: number;
     recurrence: Recurrence;
   }) => Promise<void>;
+  onUpdateBill: (billId: string, updated: {
+    name: string;
+    category: string;
+    amount: number;
+    dueDay: number;
+    recurrence: Recurrence;
+  }) => Promise<void>;
   onDeleteBill: (billId: string) => Promise<void>;
 }
 
@@ -18,9 +25,12 @@ export const BillsView: React.FC<BillsViewProps> = ({
   bills,
   onMarkPaid,
   onAddBill,
+  onUpdateBill,
   onDeleteBill,
 }) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingBillId, setEditingBillId] = useState<string | null>(null);
+
   const [name, setName] = useState("");
   const category = "Bills & Utilities";
   const [amountStr, setAmountStr] = useState("");
@@ -28,21 +38,50 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [recurrence, setRecurrence] = useState<Recurrence>("monthly");
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const openAddModal = () => {
+    setEditingBillId(null);
+    setName("");
+    setAmountStr("");
+    setDueDayStr("1");
+    setRecurrence("monthly");
+    setIsAddOpen(true);
+  };
+
+  const openEditModal = (billStatus: BillStatus) => {
+    setEditingBillId(billStatus.bill.id);
+    setName(billStatus.bill.name);
+    setAmountStr(String(billStatus.bill.amount));
+    setDueDayStr(String(billStatus.bill.dueDay));
+    setRecurrence(billStatus.bill.recurrence);
+    setIsAddOpen(true);
+  };
+
   const handleSaveBill = async () => {
     if (!name.trim()) return;
     const amount = parseFloat(amountStr) || 0;
     const dueDay = parseInt(dueDayStr, 10) || 1;
 
-    await onAddBill({
-      name: name.trim(),
-      category: category.trim(),
-      amount,
-      dueDay,
-      recurrence,
-    });
+    if (editingBillId) {
+      await onUpdateBill(editingBillId, {
+        name: name.trim(),
+        category,
+        amount,
+        dueDay,
+        recurrence,
+      });
+    } else {
+      await onAddBill({
+        name: name.trim(),
+        category,
+        amount,
+        dueDay,
+        recurrence,
+      });
+    }
 
     setName("");
     setAmountStr("");
+    setEditingBillId(null);
     setIsAddOpen(false);
   };
 
@@ -62,7 +101,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
         <button
           className="primary-dark-btn"
           style={{ width: "auto", padding: "8px 14px", fontSize: "0.8rem" }}
-          onClick={() => setIsAddOpen(true)}
+          onClick={openAddModal}
         >
           + Add Bill
         </button>
@@ -79,7 +118,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 key={item.bill.id}
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
+                  justify-content: "space-between",
                   alignItems: "center",
                   padding: "14px 0",
                   borderBottom: "1px solid var(--border-subtle)",
@@ -104,7 +143,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                   </div>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: "0.95rem", fontWeight: 800 }}>RM{item.bill.amount.toFixed(2)}</div>
                     {!isPaid && (
@@ -119,6 +158,22 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     )}
                   </div>
                   <button
+                    title="Edit bill"
+                    onClick={() => openEditModal(item)}
+                    style={{
+                      padding: 6,
+                      color: "var(--text-light)",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button
                     title="Delete recurring bill"
                     onClick={() => {
                       if (window.confirm("Are you sure you want to delete this recurring bill?")) {
@@ -132,7 +187,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      marginLeft: 4,
                     }}
                   >
                     <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,7 +204,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
         )}
       </div>
 
-      {/* Add Bill Drawer Modal */}
+      {/* Add / Edit Bill Drawer Modal */}
       {isAddOpen && (
         <div className="modal-overlay" onClick={() => setIsAddOpen(false)}>
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
@@ -159,7 +213,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
               <button className="sheet-action-btn save" onClick={handleSaveBill}>
                 Save
               </button>
-              <h3>Add Recurring Bill</h3>
+              <h3>{editingBillId ? "Edit Recurring Bill" : "Add Recurring Bill"}</h3>
               <button className="sheet-action-btn cancel" onClick={() => setIsAddOpen(false)}>
                 Cancel
               </button>
