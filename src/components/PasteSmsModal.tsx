@@ -20,6 +20,12 @@ export const PasteSmsModal: React.FC<PasteSmsModalProps> = ({
   const [rawText, setRawText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const handleClose = () => {
+    setRawText("");
+    setError(null);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const handleParseSMS = () => {
@@ -73,7 +79,7 @@ export const PasteSmsModal: React.FC<PasteSmsModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
         <div className="sheet-drag-handle" />
         <div className="sheet-header" style={{ marginBottom: 14 }}>
@@ -98,7 +104,7 @@ export const PasteSmsModal: React.FC<PasteSmsModalProps> = ({
               <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Auto-captures Amount, Merchant & Method</span>
             </div>
           </div>
-          <button className="sheet-action-btn cancel" onClick={onClose}>
+          <button className="sheet-action-btn cancel" onClick={handleClose}>
             Cancel
           </button>
         </div>

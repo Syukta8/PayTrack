@@ -24,6 +24,13 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const handleClose = () => {
+    setSelectedImage(null);
+    setErrorMessage(null);
+    setIsScanning(false);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,29 +65,22 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
       const mimeType = selectedImage.split(";")[0].split(":")[1] || "image/jpeg";
 
       const cleanKey = apiKey.trim();
-      const modelsToTry = [
-        "gemini-1.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-pro",
+      const endpointsToTry = [
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(cleanKey)}`,
+        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(cleanKey)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(cleanKey)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(cleanKey)}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${encodeURIComponent(cleanKey)}`,
       ];
+
       let response: Response | null = null;
       let primaryErrMessage = "";
 
-      for (const model of modelsToTry) {
+      for (const url of endpointsToTry) {
         try {
-          const isOAuthToken = cleanKey.startsWith("ya29.");
-          const url = isOAuthToken
-            ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
-            : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(cleanKey)}`;
-
-          const headers: Record<string, string> = { "Content-Type": "application/json" };
-          if (isOAuthToken) {
-            headers["Authorization"] = `Bearer ${cleanKey}`;
-          }
-
           const res = await fetch(url, {
             method: "POST",
-            headers,
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               contents: [
                 {
@@ -126,7 +126,11 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
       }
 
       if (!response || !response.ok) {
-        throw new Error(`Gemini API Error: ${primaryErrMessage || "Request failed"}. Please verify your API Key from aistudio.google.com.`);
+        throw new Error(
+          primaryErrMessage.includes("is not found") || primaryErrMessage.includes("API_KEY")
+            ? "Your Gemini API Key is invalid or Generative Language API is disabled. Please create a fresh free key at aistudio.google.com"
+            : `Gemini API Error: ${primaryErrMessage}`
+        );
       }
 
       const result = await response.json();
@@ -144,7 +148,8 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
       });
 
       setSelectedImage(null);
-      onClose();
+      setErrorMessage(null);
+      handleClose();
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to scan receipt.");
     } finally {
@@ -153,7 +158,7 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 440 }}>
         <div className="sheet-drag-handle" />
         
@@ -180,7 +185,7 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
               <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Powered by Gemini 1.5 Vision AI</span>
             </div>
           </div>
-          <button className="sheet-action-btn cancel" onClick={onClose}>
+          <button className="sheet-action-btn cancel" onClick={handleClose}>
             Cancel
           </button>
         </div>

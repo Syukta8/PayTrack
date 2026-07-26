@@ -30,6 +30,13 @@ export const StatementReconciliationModal: React.FC<StatementReconciliationModal
   }>>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const handleClose = () => {
+    setFileName(null);
+    setParsedItems([]);
+    setIsProcessing(false);
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,7 +71,7 @@ export const StatementReconciliationModal: React.FC<StatementReconciliationModal
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
         <div className="sheet-drag-handle" />
         <div className="sheet-header" style={{ marginBottom: 14 }}>
@@ -89,7 +96,7 @@ export const StatementReconciliationModal: React.FC<StatementReconciliationModal
               <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Compare & Reconcile Missing Expenses</span>
             </div>
           </div>
-          <button className="sheet-action-btn cancel" onClick={onClose}>
+          <button className="sheet-action-btn cancel" onClick={handleClose}>
             Cancel
           </button>
         </div>
