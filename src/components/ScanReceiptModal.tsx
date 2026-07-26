@@ -57,25 +57,25 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
       const base64Data = selectedImage.split(",")[1];
       const mimeType = selectedImage.split(";")[0].split(":")[1] || "image/jpeg";
 
+      const cleanKey = apiKey.trim();
       const modelsToTry = [
-        "gemini-1.5-flash-latest",
         "gemini-1.5-flash",
-        "gemini-1.5-pro-latest",
-        "gemini-2.0-flash-exp",
+        "gemini-2.0-flash",
+        "gemini-1.5-pro",
       ];
       let response: Response | null = null;
-      let lastErrMessage = "";
+      let primaryErrMessage = "";
 
       for (const model of modelsToTry) {
         try {
-          const isBearer = apiKey.trim().startsWith("AQ.");
-          const url = isBearer
+          const isOAuthToken = cleanKey.startsWith("ya29.");
+          const url = isOAuthToken
             ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
-            : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey.trim()}`;
+            : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(cleanKey)}`;
 
           const headers: Record<string, string> = { "Content-Type": "application/json" };
-          if (isBearer) {
-            headers["Authorization"] = `Bearer ${apiKey.trim()}`;
+          if (isOAuthToken) {
+            headers["Authorization"] = `Bearer ${cleanKey}`;
           }
 
           const res = await fetch(url, {
@@ -113,15 +113,20 @@ Return ONLY valid JSON matching this exact structure without markdown backticks:
             break;
           } else {
             const errData = await res.json().catch(() => ({}));
-            lastErrMessage = errData?.error?.message || `HTTP ${res.status}`;
+            const msg = errData?.error?.message || `HTTP ${res.status}`;
+            if (!primaryErrMessage) {
+              primaryErrMessage = msg;
+            }
           }
         } catch (e) {
-          lastErrMessage = e instanceof Error ? e.message : "Network error";
+          if (!primaryErrMessage) {
+            primaryErrMessage = e instanceof Error ? e.message : "Network error";
+          }
         }
       }
 
       if (!response || !response.ok) {
-        throw new Error(`Gemini API Error: ${lastErrMessage}. Make sure your key is generated at aistudio.google.com`);
+        throw new Error(`Gemini API Error: ${primaryErrMessage || "Request failed"}. Please verify your API Key from aistudio.google.com.`);
       }
 
       const result = await response.json();
