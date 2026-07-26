@@ -409,6 +409,7 @@ export default function App() {
                   description: parsed.description,
                   date: parsed.date,
                   note: parsed.description,
+                  paymentMethod: parsed.paymentMethod,
                 });
                 setIsPasteSmsOpen(false);
                 setIsAddModalOpen(true);

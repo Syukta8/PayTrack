@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import type { PaymentType } from "../model/types";
 
 interface PasteSmsModalProps {
   isOpen: boolean;
@@ -39,12 +40,13 @@ export const PasteSmsModal: React.FC<PasteSmsModalProps> = ({
       const amountMatch = rawText.match(/(?:RM|MYR)?\s*(\d+(?:\.\d{1,2})?)/i);
       const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
 
-      // Detect Payment Method
-      let paymentMethod = "Transfer";
-      if (/qr/i.test(rawText)) paymentMethod = "QR";
-      else if (/credit/i.test(rawText)) paymentMethod = "Credit Card";
-      else if (/debit|card/i.test(rawText)) paymentMethod = "Debit Card";
-      else if (/spaylater/i.test(rawText)) paymentMethod = "SPayLater";
+      // Detect Payment Method. Values come from PAYMENT_TYPES so the picker, the sheet and
+      // this parser agree. SPayLater is matched first because it is the most specific.
+      let paymentMethod: PaymentType = "Online banking";
+      if (/spaylater/i.test(rawText)) paymentMethod = "SPayLater";
+      else if (/qr|duitnow/i.test(rawText)) paymentMethod = "QR code";
+      else if (/credit/i.test(rawText)) paymentMethod = "Credit card";
+      else if (/debit|card/i.test(rawText)) paymentMethod = "Debit card";
 
       // Detect Category
       let category = "Personal";

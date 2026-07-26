@@ -3,7 +3,37 @@ export type Recurrence = "monthly" | "weekly" | "yearly";
 export type BillHealth = "paid" | "overdue" | "due_soon" | "upcoming";
 export type MaintenanceHealth = Exclude<BillHealth, "paid">;
 
+/** The single source of truth for payment labels: the picker, the SMS parser, the receipt
+ * scanner prompt, and the value written to the sheet all read from this list. */
 export const PAYMENT_TYPES = ["Online banking", "QR code", "Debit card", "Credit card", "SPayLater", "Cash"] as const;
+
+export type PaymentType = (typeof PAYMENT_TYPES)[number];
+
+/** Older builds wrote their own variants ("QR", "Transfer", "Debit Card"), and the vision
+ * model may echo a near-miss, so incoming labels are folded onto the canonical list. */
+const PAYMENT_ALIASES: Record<string, PaymentType> = {
+  "qr": "QR code",
+  "qr pay": "QR code",
+  "duitnow": "QR code",
+  "duitnow qr": "QR code",
+  "transfer": "Online banking",
+  "bank transfer": "Online banking",
+  "online transfer": "Online banking",
+  "onlinebanking": "Online banking",
+  "debitcard": "Debit card",
+  "creditcard": "Credit card",
+  "spay later": "SPayLater",
+  "shopeepay later": "SPayLater",
+};
+
+export function normalizePaymentType(value: string | undefined | null): PaymentType | null {
+  if (!value) return null;
+  const key = value.trim().toLowerCase();
+  if (!key) return null;
+  const exact = PAYMENT_TYPES.find((type) => type.toLowerCase() === key);
+  if (exact) return exact;
+  return PAYMENT_ALIASES[key] ?? null;
+}
 
 export interface ReceiptItem {
   id: string;

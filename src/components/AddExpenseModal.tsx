@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { PAYMENT_TYPES, normalizePaymentType } from "../model/types";
 import type { ReceiptItem } from "../model/types";
 
 interface AddExpenseModalProps {
@@ -50,7 +51,7 @@ const INCOME_CATEGORIES = [
   { id: "Salary", label: "Salary", icon: "💼" },
 ];
 
-const PAYMENT_METHODS = ["Cash", "QR", "Debit Card", "Credit Card", "SPayLater", "Transfer"];
+const PAYMENT_METHODS = PAYMENT_TYPES;
 
 export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   isOpen,
@@ -80,6 +81,10 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       if (initialData.description || initialData.note) {
         setNote(initialData.description || initialData.note || "");
       }
+      // A detected method must survive prefill: SPayLater drives the tenure fee, so losing
+      // it silently changes the amount that gets recorded.
+      const detectedPayment = normalizePaymentType(initialData.paymentMethod);
+      if (detectedPayment) setSelectedPayment(detectedPayment);
       setImageUrl(initialData.imageUrl);
       setDriveUrl(initialData.driveUrl);
       setItems(initialData.items);

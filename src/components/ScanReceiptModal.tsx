@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { PAYMENT_TYPES, normalizePaymentType } from "../model/types";
 
 interface ScanReceiptModalProps {
   isOpen: boolean;
@@ -195,7 +196,7 @@ function validateReceipt(raw: unknown): ScanResult {
       date,
       category: typeof source.category === "string" && source.category.trim() ? source.category.trim() : "Shopping",
       note: typeof source.note === "string" && source.note.trim() ? source.note.trim() : merchantName,
-      paymentMethod: typeof source.paymentMethod === "string" && source.paymentMethod.trim() ? source.paymentMethod.trim() : undefined,
+      paymentMethod: normalizePaymentType(typeof source.paymentMethod === "string" ? source.paymentMethod : null) ?? undefined,
       items,
     },
   };
@@ -295,7 +296,7 @@ Respond with JSON only, matching this structure:
   "serviceCharge": 0.00,
   "date": "YYYY-MM-DD",
   "category": "Food & Dining" | "Shopping" | "Entertainment" | "Bills & Utilities" | "Personal" | "Transport",
-  "paymentMethod": "Cash" | "QR code" | "Debit card" | "Credit card" | "SPayLater",
+  "paymentMethod": ${PAYMENT_TYPES.map((type) => `"${type}"`).join(" | ")},
   "note": "summary of store/location",
   "isQualityLow": false,
   "items": [

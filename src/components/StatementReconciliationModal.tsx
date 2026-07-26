@@ -48,9 +48,12 @@ export const StatementReconciliationModal: React.FC<StatementReconciliationModal
 
     // Simulate PDF / CSV statement parsing into clean reconciliation items
     setTimeout(() => {
+      // FIXME: this modal does not parse the uploaded statement at all â these rows are
+      // invented and must not be presented as extracted data. Needs its own ticket:
+      // either implement real CSV/PDF parsing or remove the import path.
       const mockExtracted = [
-        { id: "stmt-1", date: "2026-05-02", amount: 45.90, category: "Food & Dining", description: "ZUS COFFEE SEREMBAN", paymentMethod: "Debit Card", selected: true },
-        { id: "stmt-2", date: "2026-05-14", amount: 120.00, category: "Transport", description: "SHELL HIGHWAY KESANG", paymentMethod: "Credit Card", selected: true },
+        { id: "stmt-1", date: "2026-05-02", amount: 45.90, category: "Food & Dining", description: "ZUS COFFEE SEREMBAN", paymentMethod: "Debit card", selected: true },
+        { id: "stmt-2", date: "2026-05-14", amount: 120.00, category: "Transport", description: "SHELL HIGHWAY KESANG", paymentMethod: "Credit card", selected: true },
         { id: "stmt-3", date: "2026-05-20", amount: 89.00, category: "Bills & Utilities", description: "UNIFI FIBER MONTHLY", paymentMethod: "Online banking", selected: true },
       ];
       setParsedItems(mockExtracted);
