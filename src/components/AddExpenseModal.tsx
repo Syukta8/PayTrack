@@ -189,10 +189,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
         {selectedPayment === "SPayLater" && (
           <div style={{ marginTop: 12, padding: "12px", background: "var(--bg-subtle)", borderRadius: 12 }}>
-            <div className="hero-eyebrow" style={{ marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>SPAYLATER TENURE</span>
-              <span style={{ color: "#ea580c", fontWeight: 700 }}>1.5% fee/month (3M, 6M, 12M)</span>
-            </div>
+            <div className="hero-eyebrow" style={{ marginBottom: 8 }}>SPAYLATER TENURE</div>
             <div className="pill-options-row" style={{ marginBottom: 0 }}>
               {([1, 3, 6, 12] as const).map((months) => {
                 const principal = parseFloat(amountStr) || 0;
