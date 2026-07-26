@@ -38,7 +38,6 @@ export default function App() {
     date?: string;
     note?: string;
     imageUrl?: string;
-    driveUrl?: string;
     paymentMethod?: string;
     tax?: number;
     serviceCharge?: number;
@@ -99,19 +98,19 @@ export default function App() {
     date: string;
     note: string;
     imageUrl?: string;
-    driveUrl?: string;
     tax?: number;
     serviceCharge?: number;
     items?: ReceiptItem[];
   }) => {
     if (!vm.tracker) return;
     try {
-      const drivePath = formData.driveUrl || scannedData?.driveUrl || `Google Drive: PayTrack_Receipts/${formData.date.slice(0, 4)}/${formData.date.slice(5, 7)}/receipt_${Date.now().toString(36)}.jpg`;
       const imgData = formData.imageUrl || scannedData?.imageUrl;
       const subitems = formData.items || scannedData?.items;
 
       // Line items live in their own sheet tab now, so they are no longer packed into
-      // remarks (where anything past ~500 characters was silently dropped).
+      // remarks (where anything past ~500 characters was silently dropped). remarks is left
+      // empty: it previously held an invented Google Drive path for a file that was never
+      // uploaded anywhere.
       const createdId = await vm.tracker.addTransaction({
         date: formData.date,
         type: formData.type,
@@ -119,9 +118,7 @@ export default function App() {
         category: formData.category,
         paymentType: formData.paymentMethod,
         description: formData.note,
-        remarks: drivePath,
-        imageUrl: drivePath,
-        driveUrl: drivePath,
+        remarks: "",
         tax: formData.tax ?? scannedData?.tax ?? 0,
         serviceCharge: formData.serviceCharge ?? scannedData?.serviceCharge ?? 0,
         items: subitems,

@@ -14,7 +14,6 @@ interface AddExpenseModalProps {
     date: string;
     note: string;
     imageUrl?: string;
-    driveUrl?: string;
     tax?: number;
     serviceCharge?: number;
     items?: ReceiptItem[];
@@ -26,7 +25,6 @@ interface AddExpenseModalProps {
     date?: string;
     note?: string;
     imageUrl?: string;
-    driveUrl?: string;
     paymentMethod?: string;
     tax?: number;
     serviceCharge?: number;
@@ -71,7 +69,6 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [note, setNote] = useState("");
   const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
-  const [driveUrl, setDriveUrl] = useState<string | undefined>(undefined);
   const [items, setItems] = useState<ReceiptItem[] | undefined>(undefined);
   const [tax, setTax] = useState(0);
   const [serviceCharge, setServiceCharge] = useState(0);
@@ -90,13 +87,11 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       const detectedPayment = normalizePaymentType(initialData.paymentMethod);
       if (detectedPayment) setSelectedPayment(detectedPayment);
       setImageUrl(initialData.imageUrl);
-      setDriveUrl(initialData.driveUrl);
       setItems(initialData.items);
       setTax(initialData.tax ?? 0);
       setServiceCharge(initialData.serviceCharge ?? 0);
     } else {
       setImageUrl(undefined);
-      setDriveUrl(undefined);
       setItems(undefined);
       setTax(0);
       setServiceCharge(0);
@@ -135,7 +130,6 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       date,
       note: finalNote,
       imageUrl,
-      driveUrl,
       tax,
       serviceCharge,
       items,
@@ -147,7 +141,6 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
     setSpayTenure(1);
     setNote("");
     setImageUrl(undefined);
-    setDriveUrl(undefined);
     setItems(undefined);
     setTax(0);
     setServiceCharge(0);

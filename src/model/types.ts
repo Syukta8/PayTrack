@@ -67,7 +67,6 @@ export interface Transaction {
   remarks: string;
   createdAt: string;
   imageUrl?: string;
-  driveUrl?: string;
   tax?: number;
   serviceCharge?: number;
   items?: ReceiptItem[];

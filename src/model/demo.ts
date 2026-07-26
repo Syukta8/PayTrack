@@ -50,7 +50,6 @@ function seed(): DemoData {
       remarks: "",
       createdAt: `${date}T09:18:00.000Z`,
       imageUrl: "",
-      driveUrl: "",
     })),
     bills: [{ id: id("bill-forte"), name: "Unifi Fiber", amount: 250, category: "Bills & Utilities", dueDay: 1, recurrence: "monthly" as const, lastPaidPeriod: "", active: true }],
     maintenance: [{ id: id("maintenance-oil"), name: "Engine oil", notes: "Full synthetic and oil filter", intervalMonths: 6, intervalKm: 10000, lastServiceDate: "2026-04-26", lastServiceMileage: 198203, active: true }],

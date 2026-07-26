@@ -13,7 +13,6 @@ export interface ScannedTransactionDraft {
   date: string;
   note: string;
   imageUrl?: string;
-  driveUrl?: string;
   paymentMethod?: string;
   items?: ReceiptItem[];
 }
@@ -87,7 +86,6 @@ export function useReceiptScannerViewModel(onScanned: (draft: ScannedTransaction
 
       const { receipt } = outcome;
       const stamp = Date.now().toString(36);
-      const driveFolder = `PayTrack_Receipts/${receipt.date.slice(0, 4)}/${receipt.date.slice(5, 7)}/rcpt_${stamp}.jpg`;
 
       onScanned({
         amount: receipt.totalAmount,
@@ -99,7 +97,6 @@ export function useReceiptScannerViewModel(onScanned: (draft: ScannedTransaction
         note: receipt.note,
         paymentMethod: receipt.paymentMethod,
         imageUrl: prepared.dataUrl,
-        driveUrl: `Google Drive: ${driveFolder}`,
         items: receipt.items.map((item, index) => ({
           id: `item_${stamp}_${index}`,
           name: item.name,

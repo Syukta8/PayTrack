@@ -241,7 +241,7 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
                     <div style={{ fontSize: "2.5rem", marginBottom: 12 }}>🧾</div>
                     <h4 style={{ margin: "0 0 6px", fontSize: "1rem", fontWeight: 800 }}>No Receipt Image Attached</h4>
                     <p style={{ fontSize: "0.82rem", color: "var(--text-muted)", margin: 0 }}>
-                      Snap or upload a photo via AI Receipt Scanner to store high-res receipts in your Google Drive Vault.
+                      Snap or upload a photo via AI Receipt Scanner to keep a copy of the receipt with this transaction.
                     </p>
                   </div>
                 );
@@ -264,17 +264,22 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
                     />
                   </div>
                   
+                  {/* This photo lives in this browser's storage only. PayTrack has no server
+                      and no Drive upload, so claiming a cloud backup here would be false. */}
                   <div style={{ marginTop: 16, textAlign: "left", background: "var(--bg-subtle)", padding: 14, borderRadius: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "#166534" }}>
-                        📁 Google Drive 7-Year Vault Backup
+                      <span style={{ fontSize: "0.82rem", fontWeight: 800 }}>
+                        📱 Stored on this device
                       </span>
-                      <span style={{ fontSize: "0.7rem", color: "#15803d", backgroundColor: "#dcfce7", padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
-                        Synced
+                      <span style={{ fontSize: "0.7rem", color: "#92400e", backgroundColor: "rgba(245, 158, 11, 0.15)", padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
+                        Not backed up
                       </span>
                     </div>
-                    <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", wordBreak: "break-all" }}>
-                      {receipt.driveUrl || `Google Drive: PayTrack_Receipts/${receipt.date.slice(0, 4)}/${receipt.date.slice(5, 7)}/receipt_${receipt.id}.jpg`}
+                    <div style={{ fontSize: "0.74rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                      The photo is held in this browser only — it is not uploaded anywhere and
+                      will be lost if you clear site data or switch device. Your figures and line
+                      items are safe in the Google Sheet either way. Save the image below if you
+                      need to keep it.
                     </div>
                   </div>
 
@@ -285,7 +290,7 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
                     className="pill-btn"
                     style={{ display: "inline-block", marginTop: 14, fontSize: "0.8rem", padding: "8px 16px", textDecoration: "none", fontWeight: 700 }}
                   >
-                    🔍 Open Full High-Res Receipt Photo
+                    🔍 Open Receipt Photo
                   </a>
                 </div>
               );
