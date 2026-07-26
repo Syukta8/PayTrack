@@ -23,9 +23,18 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
     (t.description || t.category).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalExpense = transactions
-    .filter((t) => t.type === "expense")
+  // Calculate Salary Income (Main Income)
+  const salaryIncome = transactions
+    .filter((t) => t.type === "income" || t.category === "Salary")
     .reduce((sum, t) => sum + t.amount, 0);
+
+  // Calculate Total Expense (All non-salary expenses & allocations)
+  const totalExpense = transactions
+    .filter((t) => t.type === "expense" || t.category !== "Salary")
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  // Remaining Balance = Salary Income - Total Expense
+  const remainingBalance = salaryIncome - totalExpense;
 
   // Calculate dynamic daily spending trend for AreaChart from Google Sheet transactions
   const rhythmTrendMap = new Map<number, number>();
@@ -39,13 +48,20 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   const subcategoryMap = new Map<string, number>();
 
   transactions.forEach((t) => {
-    if (t.type === "expense") {
+    const isExpenseItem = t.type === "expense" || t.category !== "Salary";
+    if (isExpenseItem) {
       // Category totals
       categoryMap.set(t.category, (categoryMap.get(t.category) || 0) + t.amount);
 
-      // Subcategory / Description totals
-      const subName = t.description || t.category;
-      subcategoryMap.set(subName, (subcategoryMap.get(subName) || 0) + t.amount);
+      // Subcategory / Description totals (Restricted strictly to Food & Dining, Shopping, and Entertainment)
+      if (
+        t.category === "Food & Dining" ||
+        t.category === "Shopping" ||
+        t.category === "Entertainment"
+      ) {
+        const subName = t.description || t.category;
+        subcategoryMap.set(subName, (subcategoryMap.get(subName) || 0) + t.amount);
+      }
 
       // Dynamic Tax (6% for Food & Dining or Shopping)
       if (t.category === "Food & Dining" || t.category === "Shopping") {
@@ -105,11 +121,15 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          <span>Total Spending</span>
+          <span>Remaining Balance</span>
         </div>
 
-        <div className="total-spending-amount">
-          RM{totalExpense.toFixed(2)}
+        <div className="total-spending-amount" style={{ color: remainingBalance < 0 ? "#ef4444" : undefined }}>
+          RM{remainingBalance.toFixed(2)}
+        </div>
+
+        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: 2, marginBottom: 8 }}>
+          Salary Income: <strong>RM{salaryIncome.toFixed(2)}</strong> · Total Expense: <strong>RM{totalExpense.toFixed(2)}</strong>
         </div>
 
         <div className="badge-row">

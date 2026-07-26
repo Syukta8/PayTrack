@@ -28,14 +28,14 @@ const EXPENSE_CATEGORIES = [
   { id: "Bills & Utilities", label: "Bills & Utilities", icon: "⚡" },
   { id: "Entertainment", label: "Entertainment", icon: "🎬" },
   { id: "Health", label: "Health", icon: "🏥" },
-];
-
-const INCOME_CATEGORIES = [
-  { id: "Salary", label: "Salary", icon: "💼" },
   { id: "Savings", label: "Savings", icon: "🏦" },
   { id: "Tabung Haji", label: "Tabung Haji", icon: "🕌" },
   { id: "ASB", label: "ASB", icon: "📈" },
   { id: "Unit Trust", label: "Unit Trust", icon: "📊" },
+];
+
+const INCOME_CATEGORIES = [
+  { id: "Salary", label: "Salary", icon: "💼" },
 ];
 
 const PAYMENT_METHODS = ["Cash", "QR", "Card", "Transfer"];
