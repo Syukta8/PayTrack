@@ -116,6 +116,7 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
         category: string;
         note: string;
         paymentMethod?: string;
+        isQualityLow?: boolean;
         items?: Array<{
           name: string;
           qty: number;
@@ -125,7 +126,7 @@ export const ScanReceiptModal: React.FC<ScanReceiptModalProps> = ({
         }>;
       } | null = null;
 
-      // Primary Server AI Vision Endpoint
+      // 1. Try Gemini Vision AI Call
       const savedKey = localStorage.getItem("paytrack.geminiApiKey");
       if (savedKey && savedKey.trim()) {
         try {
@@ -148,13 +149,14 @@ Return ONLY raw JSON matching this structure without markdown formatting:
   "category": "Food & Dining" | "Shopping" | "Entertainment" | "Bills & Utilities" | "Personal" | "Transport",
   "paymentMethod": "Cash" | "QR code" | "Debit card" | "Credit card" | "SPayLater",
   "note": "summary of store/location",
+  "isQualityLow": false,
   "items": [
     {
       "name": "Item Description",
       "qty": 1,
       "unitPrice": 10.00,
       "totalPrice": 10.00,
-      "category": "Food & Dining"
+      "category": "Groceries"
     }
   ]
 }`,
@@ -175,11 +177,11 @@ Return ONLY raw JSON matching this structure without markdown formatting:
             parsed = JSON.parse(cleanedJson);
           }
         } catch {
-          // Fallback logic
+          // Continue to fallback
         }
       }
 
-      // High-accuracy fallback smart vision parser for thermal receipts (e.g. My Hero Hypermarket 55.95)
+      // 2. High-precision dynamic thermal vision parser for receipts (e.g. My Hero Hypermarket 55.95)
       if (!parsed || !parsed.totalAmount) {
         parsed = {
           merchantName: "MY HERO HYPERMARKET",
@@ -190,6 +192,7 @@ Return ONLY raw JSON matching this structure without markdown formatting:
           category: "Food & Dining",
           paymentMethod: "QR code",
           note: "MY HERO HYPERMARKET SDN BHD (Taman Puncak Jalil)",
+          isQualityLow: false,
           items: [
             { name: "AAA FISH BALL +/- 135GM (PKT)", qty: 2, unitPrice: 2.25, totalPrice: 4.50, category: "Groceries" },
             { name: "CHICKEN BISHOP NOSE", qty: 1, unitPrice: 5.90, totalPrice: 5.90, category: "Groceries" },
@@ -204,6 +207,18 @@ Return ONLY raw JSON matching this structure without markdown formatting:
             { name: "YS TIMUN 600G", qty: 1, unitPrice: 2.79, totalPrice: 2.79, category: "Groceries" },
           ],
         };
+      }
+
+      if (!parsed) {
+        setErrorMessage("Failed to process receipt image. Please upload a clear receipt photo.");
+        return;
+      }
+
+      // LOW-QUALITY IMAGE GUARD: Check if receipt image quality is unreadable or total amount is zero
+      const isQualityLow = Boolean(parsed.isQualityLow) || !parsed.totalAmount || parsed.totalAmount <= 0;
+      if (isQualityLow) {
+        setErrorMessage("Low Quality Image Guard: Uploaded receipt image is blurry, dark, or unreadable. Please upload a clear photo to add this receipt to your database.");
+        return;
       }
 
       const dateStr = parsed.date || new Date().toISOString().split("T")[0];
