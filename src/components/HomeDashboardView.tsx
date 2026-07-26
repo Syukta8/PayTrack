@@ -19,37 +19,43 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   const [activeSegment, setActiveSegment] = useState<"details" | "overview">("details");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredTransactions = transactions.filter((t) =>
+  // Extract unique available months from transaction history (e.g., ["2026-07", "2026-04"])
+  const availableMonths = Array.from(
+    new Set(transactions.map((t) => t.date.slice(0, 7)).filter(Boolean))
+  ).sort().reverse();
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    return availableMonths[0] || new Date().toISOString().slice(0, 7);
+  });
+
+  const targetYearMonth = availableMonths.includes(selectedMonth)
+    ? selectedMonth
+    : availableMonths[0] || new Date().toISOString().slice(0, 7);
+
+  // Filter transactions for selected target month
+  const monthTransactions = transactions.filter((t) => t.date.startsWith(targetYearMonth));
+
+  const filteredTransactions = monthTransactions.filter((t) =>
     (t.description || t.category).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Calculate Salary Income (Main Income)
-  const salaryIncome = transactions
+  // Calculate Salary Income for selected month
+  const salaryIncome = monthTransactions
     .filter((t) => t.type === "income" || t.category === "Salary")
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // Calculate Total Expense (All non-salary expenses & allocations)
-  const totalExpense = transactions
+  // Calculate Total Expense for selected month
+  const totalExpense = monthTransactions
     .filter((t) => t.type === "expense" || t.category !== "Salary")
     .reduce((sum, t) => sum + t.amount, 0);
 
   // Remaining Balance = Salary Income - Total Expense
   const remainingBalance = salaryIncome - totalExpense;
 
-  // Calculate dynamic timeline for AreaChart based on transactions date range or current month
-  let targetYearMonth = new Date().toISOString().slice(0, 7);
-  if (transactions.length > 0) {
-    const dates = transactions.map((t) => t.date).filter(Boolean).sort();
-    if (dates.length > 0) {
-      targetYearMonth = dates[dates.length - 1].slice(0, 7); // Use latest transaction month
-    }
-  }
-
   const [yearStr, monthStr] = targetYearMonth.split("-");
   const yearNum = parseInt(yearStr, 10);
   const monthNum = parseInt(monthStr, 10);
   const totalDaysInMonth = new Date(yearNum, monthNum, 0).getDate();
-
   const monthName = new Date(yearNum, monthNum - 1, 1).toLocaleString("en-US", { month: "short" });
 
   const rhythmTrendMap = new Map<number, number>();
@@ -60,7 +66,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   const categoryMap = new Map<string, number>();
   const subcategoryMap = new Map<string, number>();
 
-  transactions.forEach((t) => {
+  monthTransactions.forEach((t) => {
     const isExpenseItem = t.type === "expense" || t.category !== "Salary";
     if (isExpenseItem) {
       // Category totals
@@ -85,11 +91,9 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
         dynamicServiceCharge += t.amount * 0.04;
       }
 
-      if (t.date.startsWith(targetYearMonth)) {
-        const day = parseInt(t.date.slice(-2), 10);
-        if (!isNaN(day)) {
-          rhythmTrendMap.set(day, (rhythmTrendMap.get(day) || 0) + t.amount);
-        }
+      const day = parseInt(t.date.slice(-2), 10);
+      if (!isNaN(day)) {
+        rhythmTrendMap.set(day, (rhythmTrendMap.get(day) || 0) + t.amount);
       }
     }
   });
@@ -122,12 +126,44 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
     <div>
       {/* Pastel Gradient Header */}
       <div className="hero-gradient-header">
-        <button className="month-dropdown-btn">
-          <span>This Month ({monthName} {yearNum})</span>
-          <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div style={{ position: "relative", display: "inline-block", marginBottom: 16 }}>
+          <select
+            value={targetYearMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            style={{
+              appearance: "none",
+              background: "#ffffff",
+              border: "none",
+              padding: "8px 32px 8px 16px",
+              borderRadius: "var(--radius-sm)",
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              color: "var(--text-main)",
+              boxShadow: "var(--shadow-sm)",
+              cursor: "pointer",
+            }}
+          >
+            {availableMonths.map((m) => {
+              const [y, mNum] = m.split("-");
+              const mName = new Date(parseInt(y, 10), parseInt(mNum, 10) - 1, 1).toLocaleString("en-US", { month: "short" });
+              return (
+                <option key={m} value={m}>
+                  {mName} {y}
+                </option>
+              );
+            })}
+          </select>
+          <svg
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
           </svg>
-        </button>
+        </div>
 
         <div className="spending-title-row">
           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
