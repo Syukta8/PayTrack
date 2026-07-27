@@ -225,39 +225,167 @@ export const BillsView: React.FC<BillsViewProps> = ({
         <div className="section-card">
           {bnplItems.length > 0 ? (
             bnplItems.map((item) => {
-              const match = (item.description + " " + item.remarks).match(/SPayLater\s*(\d+)M/i);
+              const match = (item.description + " " + (item.remarks || "")).match(/SPayLater\s*(\d+)M/i);
               const tenureMonths = match ? parseInt(match[1], 10) : 1;
-              const monthlyInstallment = (item.amount / tenureMonths).toFixed(2);
+              const monthlyAmount = item.amount / tenureMonths;
+
+              // Read paid month indices from localStorage cache
+              const paidCacheKey = `paytrack.bnplPaid_${item.id}`;
+              const storedPaidStr = localStorage.getItem(paidCacheKey);
+              const paidMonths: number[] = storedPaidStr ? JSON.parse(storedPaidStr) : [1]; // Default month 1 paid on purchase date
+
+              const paidCount = paidMonths.length;
+              const progressPct = Math.min(100, Math.round((paidCount / tenureMonths) * 100));
+
+              const toggleMonthPaid = (monthNum: number) => {
+                let updated: number[];
+                if (paidMonths.includes(monthNum)) {
+                  updated = paidMonths.filter((m) => m !== monthNum);
+                } else {
+                  updated = [...paidMonths, monthNum].sort((a, b) => a - b);
+                }
+                localStorage.setItem(paidCacheKey, JSON.stringify(updated));
+                // Force re-render
+                setBusyId(`bnpl_${Date.now()}`);
+                setTimeout(() => setBusyId(null), 50);
+              };
+
+              // Compute monthly schedule dates
+              const baseDateParts = item.date.split("-").map(Number);
+              const schedule = Array.from({ length: tenureMonths }, (_, idx) => {
+                const monthNum = idx + 1;
+                let y = baseDateParts[0] || new Date().getFullYear();
+                let m = (baseDateParts[1] || new Date().getMonth() + 1) + idx;
+                let d = baseDateParts[2] || 1;
+                while (m > 12) {
+                  m -= 12;
+                  y += 1;
+                }
+                const formattedDate = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                const isPaid = paidMonths.includes(monthNum);
+
+                return { monthNum, date: formattedDate, isPaid };
+              });
 
               return (
                 <div
                   key={item.id}
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "12px 0",
+                    padding: "14px 0",
                     borderBottom: "1px solid var(--border-subtle)",
                   }}
                 >
-                  <div>
-                    <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "var(--text-main)" }}>
-                      {item.description || "SPayLater Purchase"}
+                  {/* Plan Card Header */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "var(--text-main)" }}>
+                        {item.description || "SPayLater Purchase"}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span>{item.date} · {tenureMonths}M Tenure ({item.category})</span>
+                        <span style={{ fontSize: "0.65rem", padding: "2px 6px", borderRadius: 4, backgroundColor: tenureMonths > 1 ? "#ffedd5" : "#dcfce7", color: tenureMonths > 1 ? "#ea580c" : "#166534", fontWeight: 700 }}>
+                          {tenureMonths > 1 ? `1.5%/mo (${(tenureMonths * 1.5).toFixed(1)}% total fee)` : "0% Fee"}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>{item.date} · {tenureMonths}M Tenure ({item.category})</span>
-                      <span style={{ fontSize: "0.65rem", padding: "2px 6px", borderRadius: 4, backgroundColor: tenureMonths > 1 ? "#ffedd5" : "#dcfce7", color: tenureMonths > 1 ? "#ea580c" : "#166534", fontWeight: 700 }}>
-                        {tenureMonths > 1 ? `1.5%/mo (${(tenureMonths * 1.5).toFixed(1)}% total fee)` : "0% Fee"}
-                      </span>
+
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#ef4444" }}>
+                        RM{monthlyAmount.toFixed(2)}<span style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--text-muted)" }}>/mo</span>
+                      </div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>
+                        Total: <strong>RM{item.amount.toFixed(2)}</strong>
+                      </div>
                     </div>
                   </div>
 
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "#ef4444" }}>
-                      RM{monthlyInstallment}<span style={{ fontSize: "0.7rem", fontWeight: 500, color: "var(--text-muted)" }}>/mo</span>
+                  {/* Installment Progress Bar */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: 4 }}>
+                      <span>Progress: <strong>{paidCount} of {tenureMonths} Months Paid</strong></span>
+                      <span>RM{(monthlyAmount * paidCount).toFixed(2)} / RM{item.amount.toFixed(2)} ({progressPct}%)</span>
                     </div>
-                    <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: 2 }}>
-                      Total: RM{item.amount.toFixed(2)}
+                    <div style={{ width: "100%", height: 6, backgroundColor: "var(--bg-subtle)", borderRadius: 4, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          width: `${progressPct}%`,
+                          height: "100%",
+                          backgroundColor: progressPct === 100 ? "#22c55e" : "#3b82f6",
+                          borderRadius: 4,
+                          transition: "width 0.3s ease",
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Monthly Schedule Breakdown Table */}
+                  <div style={{ backgroundColor: "var(--bg-subtle)", borderRadius: 12, padding: "10px 12px" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                      Monthly Installment Schedule
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {schedule.map((slot) => (
+                        <div
+                          key={slot.monthNum}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "6px 8px",
+                            backgroundColor: slot.isPaid ? "rgba(34, 197, 94, 0.08)" : "transparent",
+                            borderRadius: 8,
+                            fontSize: "0.8rem",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: "0.75rem", fontWeight: 700, minWidth: 70 }}>
+                              Month {slot.monthNum}/{tenureMonths}
+                            </span>
+                            <span style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
+                              📅 {slot.date}
+                            </span>
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontWeight: 800, color: slot.isPaid ? "#166534" : "var(--text-main)" }}>
+                              RM{monthlyAmount.toFixed(2)}
+                            </span>
+
+                            {slot.isPaid ? (
+                              <button
+                                className="badge-pill"
+                                onClick={() => toggleMonthPaid(slot.monthNum)}
+                                style={{
+                                  backgroundColor: "#dcfce7",
+                                  color: "#166534",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  padding: "3px 8px",
+                                  fontSize: "0.7rem",
+                                  fontWeight: 700,
+                                }}
+                                title="Click to unmark"
+                              >
+                                ✅ Paid
+                              </button>
+                            ) : (
+                              <button
+                                className="pill-btn active"
+                                onClick={() => toggleMonthPaid(slot.monthNum)}
+                                style={{
+                                  fontSize: "0.7rem",
+                                  padding: "3px 10px",
+                                  backgroundColor: "#3b82f6",
+                                  color: "#ffffff",
+                                }}
+                              >
+                                Mark Paid
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
