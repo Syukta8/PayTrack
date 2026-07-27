@@ -77,12 +77,18 @@ export class Tracker {
     if (itemRows.length) await this.sheets.deleteMany("receiptItems", itemRows.map((row) => row.rowNumber));
     await this.deleteById("transactions", transactionId);
   }
+
+  /** Updates an existing transaction in the Google Sheet. */
+  public async updateTransaction(transactionId: string, input: Partial<Omit<Transaction, "id" | "createdAt">>): Promise<void> {
+    const row = await this.rowById("transactions", transactionId);
+    await this.sheets.update("transactions", row.rowNumber, { ...row.data, ...input });
+  }
   /** Creates an active recurring bill. */
-  public async addBill(input: Omit<RecurringBill, "id" | "active" | "lastPaidPeriod">): Promise<void> { requireText(input.name, "Bill name"); requireText(input.category, "Bill category"); requireNonNegative(input.amount, "Bill amount"); const maximum = input.recurrence === "weekly" ? 7 : input.recurrence === "yearly" ? 366 : 31; if (!Number.isInteger(input.dueDay) || input.dueDay < 1 || input.dueDay > maximum) throw new Error(`Due day must be between 1 and ${maximum}.`); await this.sheets.append("bills", { ...input, name: input.name.trim(), category: input.category.trim(), id: id(), active: true, lastPaidPeriod: "" }); }
+  public async addBill(input: Omit<RecurringBill, "id" | "active" | "lastPaidPeriod">): Promise<void> { requireText(input.name, "Bill name"); requireText(input.category, "Bill category"); requireNonNegative(input.amount, "Bill amount"); const maximum = input.recurrence === "weekly" ? 7 : input.recurrence === "yearly" ? 366 : 31; if (!Number.isInteger(input.dueDay) || input.dueDay < 1 || input.dueDay > maximum) throw new Error(`Due day must be between 1 and ${maximum}.`); await this.sheets.append("bills", { ...input, name: input.name.trim(), category: input.category.trim(), paymentType: input.paymentType || "Online banking", id: id(), active: true, lastPaidPeriod: "" }); }
   /** Updates an existing recurring bill. */
-  public async updateBill(billId: string, input: Omit<RecurringBill, "id" | "active" | "lastPaidPeriod">): Promise<void> { requireText(input.name, "Bill name"); requireText(input.category, "Bill category"); requireNonNegative(input.amount, "Bill amount"); const row = await this.rowById("bills", billId); await this.sheets.update("bills", row.rowNumber, { ...row.data, name: input.name.trim(), category: input.category.trim(), amount: input.amount, dueDay: input.dueDay, recurrence: input.recurrence }); }
-  /** Records a bill payment and its matching expense transaction with exact current date time. */
-  public async markBillPaid(billId: string): Promise<void> {
+  public async updateBill(billId: string, input: Omit<RecurringBill, "id" | "active" | "lastPaidPeriod">): Promise<void> { requireText(input.name, "Bill name"); requireText(input.category, "Bill category"); requireNonNegative(input.amount, "Bill amount"); const row = await this.rowById("bills", billId); await this.sheets.update("bills", row.rowNumber, { ...row.data, name: input.name.trim(), category: input.category.trim(), amount: input.amount, dueDay: input.dueDay, recurrence: input.recurrence, paymentType: input.paymentType || row.data.paymentType || "Online banking" }); }
+  /** Records a bill payment and its matching expense transaction with exact current date time and payment type. */
+  public async markBillPaid(billId: string, paymentType?: string): Promise<void> {
     const row = await this.rowById("bills", billId);
     const currentDate = new Date();
     const currentDateStr = currentDate.toISOString().split("T")[0];
@@ -94,7 +100,7 @@ export class Tracker {
       category: bill.category,
       amount: bill.amount,
       description: bill.name,
-      paymentType: "",
+      paymentType: paymentType || bill.paymentType || "Online banking",
       remarks: "",
     });
   }

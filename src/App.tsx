@@ -286,6 +286,16 @@ export default function App() {
                   await vm.tracker.deleteBill(billId);
                   await vm.reload();
                 }}
+                onDeleteTransaction={async (transactionId) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.deleteTransaction(transactionId);
+                  await vm.reload();
+                }}
+                onUpdateTransaction={async (transactionId, updated) => {
+                  if (!vm.tracker) return;
+                  await vm.tracker.updateTransaction(transactionId, updated);
+                  await vm.reload();
+                }}
               />
             )}
 

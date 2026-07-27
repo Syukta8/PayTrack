@@ -23,6 +23,8 @@ interface BillsViewProps {
     paymentType?: string;
   }) => Promise<void>;
   onDeleteBill: (billId: string) => Promise<void>;
+  onDeleteTransaction?: (transactionId: string) => Promise<void>;
+  onUpdateTransaction?: (transactionId: string, updated: Partial<Omit<Transaction, "id" | "createdAt">>) => Promise<void>;
 }
 
 export const BillsView: React.FC<BillsViewProps> = ({
@@ -32,9 +34,19 @@ export const BillsView: React.FC<BillsViewProps> = ({
   onAddBill,
   onUpdateBill,
   onDeleteBill,
+  onDeleteTransaction,
+  onUpdateTransaction,
 }) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingBillId, setEditingBillId] = useState<string | null>(null);
+
+  // Edit BNPL plan modal state
+  const [isEditBNPLOpen, setIsEditBNPLOpen] = useState(false);
+  const [editingBNPLId, setEditingBNPLId] = useState<string | null>(null);
+  const [editBNPLDesc, setEditBNPLDesc] = useState("");
+  const [editBNPLAmountStr, setEditBNPLAmountStr] = useState("");
+  const [editBNPLDate, setEditBNPLDate] = useState("");
+  const [editBNPLTenure, setEditBNPLTenure] = useState<number>(1);
 
   const [name, setName] = useState("");
   const category = "Bills & Utilities";
@@ -104,11 +116,32 @@ export const BillsView: React.FC<BillsViewProps> = ({
     }
   };
 
+  const openEditBNPLModal = (transaction: Transaction, tenure: number) => {
+    setEditingBNPLId(transaction.id);
+    setEditBNPLDesc(transaction.description || "SPayLater Purchase");
+    setEditBNPLAmountStr(String(transaction.amount));
+    setEditBNPLDate(transaction.date);
+    setEditBNPLTenure(tenure);
+    setIsEditBNPLOpen(true);
+  };
+
+  const handleSaveBNPL = async () => {
+    if (!editingBNPLId || !onUpdateTransaction) return;
+    const amount = parseFloat(editBNPLAmountStr) || 0;
+    const finalPaymentMethod = `SPayLater ${editBNPLTenure}M`;
+    await onUpdateTransaction(editingBNPLId, {
+      description: editBNPLDesc.trim(),
+      amount,
+      date: editBNPLDate,
+      paymentType: finalPaymentMethod,
+    });
+    setIsEditBNPLOpen(false);
+    setEditingBNPLId(null);
+  };
+
+  // Task 4: Only add BNPL ledger if item paymentType is SPayLater (not if description is "Spaylater")
   const bnplItems = transactions.filter(
-    (t) =>
-      (t.paymentType && t.paymentType.toLowerCase().includes("spaylater")) ||
-      (t.remarks && t.remarks.toLowerCase().includes("spaylater")) ||
-      (t.description && t.description.toLowerCase().includes("spaylater"))
+    (t) => t.paymentType && t.paymentType.toLowerCase().includes("spaylater")
   );
 
   return (
@@ -297,13 +330,63 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       </div>
                     </div>
 
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#ef4444" }}>
-                        RM{monthlyAmount.toFixed(2)}<span style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--text-muted)" }}>/mo</span>
+                    <div style={{ textAlign: "right", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#ef4444" }}>
+                          RM{monthlyAmount.toFixed(2)}<span style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--text-muted)" }}>/mo</span>
+                        </div>
+                        <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>
+                          Total: <strong>RM{item.amount.toFixed(2)}</strong>
+                        </div>
                       </div>
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 2 }}>
-                        Total: <strong>RM{item.amount.toFixed(2)}</strong>
-                      </div>
+
+                      {/* Task 1: Delete option if 100% complete */}
+                      {progressPct === 100 ? (
+                        <button
+                          title="Delete completed BNPL plan"
+                          onClick={async () => {
+                            if (window.confirm("Are you sure you want to delete this completed BNPL plan?")) {
+                              if (onDeleteTransaction) await onDeleteTransaction(item.id);
+                            }
+                          }}
+                          style={{
+                            padding: 6,
+                            color: "#ef4444",
+                            backgroundColor: "rgba(239, 68, 68, 0.12)",
+                            border: "none",
+                            borderRadius: "50%",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      ) : (
+                        /* Task 2 & 3: Edit option if not 100% yet */
+                        <button
+                          title="Edit BNPL plan"
+                          onClick={() => openEditBNPLModal(item, tenureMonths)}
+                          style={{
+                            padding: 6,
+                            color: "#3b82f6",
+                            backgroundColor: "rgba(59, 130, 246, 0.12)",
+                            border: "none",
+                            borderRadius: "50%",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -491,6 +574,65 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     onClick={() => setPaymentType(pt)}
                   >
                     {pt}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit BNPL Plan Drawer Modal */}
+      {isEditBNPLOpen && (
+        <div className="modal-overlay" onClick={() => setIsEditBNPLOpen(false)}>
+          <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-drag-handle" />
+            <div className="sheet-header">
+              <button className="sheet-action-btn save" onClick={handleSaveBNPL}>
+                Save Plan
+              </button>
+              <h3>Edit BNPL Plan</h3>
+              <button className="sheet-action-btn cancel" onClick={() => setIsEditBNPLOpen(false)}>
+                Cancel
+              </button>
+            </div>
+
+            <div className="form-field-card">
+              <div className="hero-eyebrow">PLAN DESCRIPTION</div>
+              <input
+                type="text"
+                placeholder="e.g. HomePro Aircond servis"
+                value={editBNPLDesc}
+                onChange={(e) => setEditBNPLDesc(e.target.value)}
+              />
+
+              <div className="hero-eyebrow" style={{ marginTop: 14 }}>TOTAL AMOUNT (RM)</div>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={editBNPLAmountStr}
+                onChange={(e) => setEditBNPLAmountStr(e.target.value)}
+              />
+
+              <div className="hero-eyebrow" style={{ marginTop: 14 }}>START DATE</div>
+              <input
+                type="date"
+                value={editBNPLDate}
+                onChange={(e) => setEditBNPLDate(e.target.value)}
+                style={{ border: "1px solid var(--border-subtle)", borderRadius: 10, padding: 10, width: "100%", background: "var(--bg-subtle)", color: "var(--text-main)" }}
+              />
+
+              <div className="hero-eyebrow" style={{ marginTop: 14 }}>SPAYLATER TENURE</div>
+              <div className="pill-options-row" style={{ marginBottom: 0 }}>
+                {([1, 3, 6, 12] as const).map((months) => (
+                  <button
+                    key={months}
+                    type="button"
+                    className={`opt-pill ${editBNPLTenure === months ? "active" : ""}`}
+                    onClick={() => setEditBNPLTenure(months)}
+                  >
+                    {months} {months === 1 ? "Month" : "Months"}
                   </button>
                 ))}
               </div>
