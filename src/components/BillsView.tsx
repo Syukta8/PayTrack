@@ -76,6 +76,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
         amount,
         dueDay,
         recurrence,
+        paymentType,
       });
     } else {
       await onAddBill({
@@ -84,6 +85,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
         amount,
         dueDay,
         recurrence,
+        paymentType,
       });
     }
 
@@ -465,8 +467,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 })}
               </div>
 
-              <div className="hero-eyebrow" style={{ marginTop: 8 }}>RECURRENCE</div>
-              <div className="pill-options-row" style={{ marginBottom: 0 }}>
+              <div className="hero-eyebrow" style={{ marginTop: 14 }}>RECURRENCE</div>
+              <div className="pill-options-row" style={{ marginBottom: 14 }}>
                 {(["monthly", "weekly", "yearly"] as Recurrence[]).map((r) => (
                   <button
                     key={r}
@@ -475,6 +477,20 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     onClick={() => setRecurrence(r)}
                   >
                     {r}
+                  </button>
+                ))}
+              </div>
+
+              <div className="hero-eyebrow" style={{ marginTop: 8 }}>DEFAULT PAYMENT METHOD</div>
+              <div className="pill-options-row" style={{ marginBottom: 0 }}>
+                {PAYMENT_TYPES.map((pt) => (
+                  <button
+                    key={pt}
+                    type="button"
+                    className={`opt-pill ${paymentType === pt ? "active" : ""}`}
+                    onClick={() => setPaymentType(pt)}
+                  >
+                    {pt}
                   </button>
                 ))}
               </div>
