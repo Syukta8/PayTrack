@@ -1,16 +1,18 @@
 import React, { useState } from "react";
 import type { BillStatus, Recurrence, Transaction } from "../model/types";
+import { PAYMENT_TYPES } from "../model/types";
 
 interface BillsViewProps {
   bills: BillStatus[];
   transactions?: Transaction[];
-  onMarkPaid: (billId: string) => Promise<void>;
+  onMarkPaid: (billId: string, paymentType?: string) => Promise<void>;
   onAddBill: (bill: {
     name: string;
     category: string;
     amount: number;
     dueDay: number;
     recurrence: Recurrence;
+    paymentType?: string;
   }) => Promise<void>;
   onUpdateBill: (billId: string, updated: {
     name: string;
@@ -18,6 +20,7 @@ interface BillsViewProps {
     amount: number;
     dueDay: number;
     recurrence: Recurrence;
+    paymentType?: string;
   }) => Promise<void>;
   onDeleteBill: (billId: string) => Promise<void>;
 }
@@ -38,6 +41,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [amountStr, setAmountStr] = useState("");
   const [dueDayStr, setDueDayStr] = useState("1");
   const [recurrence, setRecurrence] = useState<Recurrence>("monthly");
+  const [paymentType, setPaymentType] = useState<string>("Online banking");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const openAddModal = () => {
@@ -46,6 +50,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
     setAmountStr("");
     setDueDayStr("1");
     setRecurrence("monthly");
+    setPaymentType("Online banking");
     setIsAddOpen(true);
   };
 
@@ -55,6 +60,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
     setAmountStr(String(billStatus.bill.amount));
     setDueDayStr(String(billStatus.bill.dueDay));
     setRecurrence(billStatus.bill.recurrence);
+    setPaymentType(billStatus.bill.paymentType || "Online banking");
     setIsAddOpen(true);
   };
 
@@ -98,9 +104,9 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
   const bnplItems = transactions.filter(
     (t) =>
-      t.paymentType === "SPayLater" ||
-      (t.remarks && t.remarks.includes("SPayLater")) ||
-      (t.description && t.description.includes("SPayLater"))
+      (t.paymentType && t.paymentType.toLowerCase().includes("spaylater")) ||
+      (t.remarks && t.remarks.toLowerCase().includes("spaylater")) ||
+      (t.description && t.description.toLowerCase().includes("spaylater"))
   );
 
   return (
@@ -225,7 +231,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
         <div className="section-card">
           {bnplItems.length > 0 ? (
             bnplItems.map((item) => {
-              const match = (item.description + " " + (item.remarks || "")).match(/SPayLater\s*(\d+)M/i);
+              const match = (item.paymentType + " " + item.description + " " + (item.remarks || "")).match(/SPayLater\s*(\d+)M/i);
               const tenureMonths = match ? parseInt(match[1], 10) : 1;
               const monthlyAmount = item.amount / tenureMonths;
 

@@ -121,12 +121,13 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
   const handleSave = () => {
     const finalNote = note;
+    const finalPaymentMethod = selectedPayment === "SPayLater" ? `SPayLater ${spayTenure}M` : selectedPayment;
 
     onSubmit({
       type,
       amount: effectiveAmount,
       category: selectedCategory,
-      paymentMethod: selectedPayment,
+      paymentMethod: finalPaymentMethod,
       date,
       note: finalNote,
       imageUrl,
