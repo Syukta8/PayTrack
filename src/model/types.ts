@@ -81,6 +81,7 @@ export interface RecurringBill {
   recurrence: Recurrence;
   lastPaidPeriod: string;
   active: boolean;
+  paymentType?: string;
 }
 
 export interface Budget { id: string; category: string; monthlyLimit: number; }

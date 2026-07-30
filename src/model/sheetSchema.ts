@@ -9,7 +9,7 @@ export const SHEETS: { [K in SheetEntity]: SheetDefinition<SheetRecord<K>> } = {
   // Append new columns only at the end: rows map by position, and initializeTemplate treats
   // a shorter existing header as an older-version prefix to extend.
   transactions: { tab: "Transactions", columns: [["id", "string"], ["date", "string"], ["type", "string"], ["category", "string"], ["amount", "number"], ["description", "string"], ["paymentType", "string"], ["remarks", "string"], ["createdAt", "string"], ["tax", "number"], ["serviceCharge", "number"]] },
-  bills: { tab: "RecurringBills", columns: [["id", "string"], ["name", "string"], ["amount", "number"], ["category", "string"], ["dueDay", "number"], ["recurrence", "string"], ["lastPaidPeriod", "string"], ["active", "boolean"]] },
+  bills: { tab: "RecurringBills", columns: [["id", "string"], ["name", "string"], ["amount", "number"], ["category", "string"], ["dueDay", "number"], ["recurrence", "string"], ["lastPaidPeriod", "string"], ["active", "boolean"], ["paymentType", "string"]] },
   maintenance: { tab: "MaintenanceItems", columns: [["id", "string"], ["name", "string"], ["notes", "string"], ["intervalMonths", "number"], ["intervalKm", "number"], ["lastServiceDate", "string"], ["lastServiceMileage", "number"], ["active", "boolean"]] },
   carInfo: { tab: "CarInfo", columns: [["id", "string"], ["currentMileage", "number"], ["updatedAt", "string"]] },
   serviceHistory: { tab: "ServiceHistory", columns: [["id", "string"], ["date", "string"], ["mileage", "number"], ["description", "string"], ["createdAt", "string"]] },

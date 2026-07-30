@@ -82,13 +82,12 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
         subcategoryMap.set(subName, (subcategoryMap.get(subName) || 0) + t.amount);
       }
 
-      // Dynamic Tax (6% for Food & Dining or Shopping)
-      if (t.category === "Food & Dining" || t.category === "Shopping") {
-        dynamicTax += t.amount * 0.06;
+      // Accumulate tax and service charge from actual AI-scanned receipt records
+      if (t.tax) {
+        dynamicTax += t.tax;
       }
-      // Dynamic Service Charge (4% for Food & Dining)
-      if (t.category === "Food & Dining") {
-        dynamicServiceCharge += t.amount * 0.04;
+      if (t.serviceCharge) {
+        dynamicServiceCharge += t.serviceCharge;
       }
 
       const day = parseInt(t.date.slice(-2), 10);
@@ -180,8 +179,10 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
           <span className="badge-pill" style={{ backgroundColor: "rgba(255,255,255,0.85)", color: "#1e293b", fontSize: "0.78rem" }}>
             Total Expense: <strong style={{ color: "#ef4444" }}>RM{totalExpense.toFixed(2)}</strong>
           </span>
-          <span className="badge-pill tax">Tax: RM{dynamicTax.toFixed(2)}</span>
-          <span className="badge-pill service">Service Charge: RM{dynamicServiceCharge.toFixed(2)}</span>
+          {dynamicTax > 0 && <span className="badge-pill tax">Tax: RM{dynamicTax.toFixed(2)}</span>}
+          {dynamicServiceCharge > 0 && (
+            <span className="badge-pill service">Service Charge: RM{dynamicServiceCharge.toFixed(2)}</span>
+          )}
         </div>
 
         <div className="date-range-sub">
@@ -287,8 +288,6 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                 tx.category === "Food & Dining" ||
                 tx.category === "Shopping" ||
                 tx.category === "Entertainment";
-              const isTaxableCategory =
-                tx.category === "Food & Dining" || tx.category === "Shopping";
 
               return (
                 <div
@@ -310,9 +309,9 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div className="receipt-amount-box">
                       <div className="receipt-amount">RM{tx.amount.toFixed(2)}</div>
-                      {isTaxableCategory && (
-                        <div className="receipt-tax-sub">RM{(tx.amount * 0.06).toFixed(2)}</div>
-                      )}
+                      {tx.tax && tx.tax > 0 ? (
+                        <div className="receipt-tax-sub">Tax: RM{tx.tax.toFixed(2)}</div>
+                      ) : null}
                     </div>
                     {onDeleteTransaction && (
                       <button
