@@ -1,6 +1,6 @@
 # PayTrack Project Map
 
-> Implementation snapshot: 2026-07-27. Generated from the current worktree, including uncommitted schema changes; it is not a replacement for reading the affected source before editing.
+> Implementation snapshot: 2026-07-30. Generated from the current worktree, including uncommitted schema changes; it is not a replacement for reading the affected source before editing.
 
 ```text
 PayTrack/
@@ -58,6 +58,7 @@ PayTrack/
 | --- | --- | --- |
 | Add or change a persistent field | `src/model/types.ts`, `src/model/sheetSchema.ts` | `tracker.ts`, `sheets.ts`, `demo.ts`, `README.md`, and affected form/view code. For positional Sheets schema, append the column only. |
 | Change a recurring bill payment method | `src/model/types.ts`, `src/model/sheetSchema.ts`, `tracker.ts`, `BillsView.tsx` | `sheets.ts`, `demo.ts`, `README.md`, and generated transaction behavior in `markBillPaid`. |
+| Change tax or service charge calculations | `HomeDashboardView.tsx`, `AddExpenseModal.tsx` | `useReceiptScannerViewModel.ts`, `receiptVision.ts`, `ReceiptDetailsView.tsx`. |
 | Add a transaction workflow | `tracker.ts`, relevant modal/view, `App.tsx` | `useTrackerViewModel.ts`, duplicate behavior, reload/error states. |
 | Change Google Sheets behavior | `sheets.ts` | `sheetSchema.ts`, `AuthContext.tsx`, demo parity, initialization flow. |
 | Change bills or maintenance status | `domain.ts` | `types.ts`, `tracker.ts`, `BillsView.tsx`, `MaintenanceView.tsx`. |
@@ -71,6 +72,7 @@ PayTrack/
 - `SheetsStore` is the persistence seam; preserve parity between `SheetsRepository` and `DemoSheetsRepository`.
 - Spreadsheet rows are mapped by their fixed, ordered schema columns.
 - `RecurringBills.paymentType` is appended after `active`; preserve its position and default legacy empty values to `Online banking` when writing or paying a bill.
+- Tax and service charge display and header totals accumulate strictly from stored transaction values populated via AI receipt scanning; never re-introduce hardcoded category-based percentages.
 - A transaction's receipt items are linked by `transactionId`; deleting a transaction must clean up its items.
 - A receipt image is non-authoritative local cache data; Google Sheets holds finance data and receipt item records.
 - The app must support configured connected mode and `VITE_DEMO_MODE=true`.

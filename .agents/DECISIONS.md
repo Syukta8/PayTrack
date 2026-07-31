@@ -1,6 +1,6 @@
 # PayTrack Decisions
 
-> Implementation snapshot: 2026-07-27. Includes the current worktree, including uncommitted schema changes. Entries marked **Inferred** reflect current code and configuration, not necessarily a separately approved ADR.
+> Implementation snapshot: 2026-07-30. Includes the current worktree, including uncommitted schema changes. Entries marked **Inferred** reflect current code and configuration, not necessarily a separately approved ADR.
 
 | ID | Decision | Status | Rationale and consequence |
 | --- | --- | --- | --- |
@@ -17,7 +17,8 @@
 | D-011 | Model bill and maintenance health with pure date/mileage functions | Implemented | `domain.ts` keeps due-state logic testable and reusable. Bill “due soon” is within five days; maintenance can be date- or mileage-driven. |
 | D-012 | Keep platform configuration separate from source | Implemented | `.env.example` documents variables; `.env` files must not be committed. Firebase Hosting configuration is versioned in `firebase.json`. |
 | D-013 | Validate reachable Git history before publishing | Accepted | Run `git log --all -p` or a dedicated secrets scanner before publishing. If sensitive material is found, remove it from history and rotate affected credentials; cloning alone does not contain a public historical exposure. |
-| D-014 | Persist a default payment method on recurring bills | Implemented | `RecurringBills.paymentType` is appended as the final positional column. Bill creation and editing preserve a selected method, defaulting to `Online banking`; marking a bill paid uses that method for the generated expense. Existing sheets are extended during initialization. |
+| D-014 | Persist a default payment method on recurring bills | Implemented | `RecurringBills.paymentType` is appended as the final positional column. Bill creation and editing preserve a selected method, defaulting to `Online banking`; marking a bill paid uses that method for the generated expense. Synchronized in `types.ts` and `sheetSchema.ts`. |
+| D-015 | Restrict tax and service charge accumulation to scanned transactions | Implemented | Prevents artificial dynamic estimates (6% tax / 4% service charge) on un-scanned or manual transactions; tax and service charge display and dashboard totals apply exclusively to actual values populated from receipt scanning. |
 
 ## Open decisions
 

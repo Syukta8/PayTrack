@@ -1,6 +1,6 @@
 # PayTrack Features
 
-> Implementation snapshot: 2026-07-27. This inventory reflects the current worktree, including uncommitted schema changes; it is not a product roadmap.
+> Implementation snapshot: 2026-07-30. This inventory reflects the current worktree, including uncommitted schema changes; it is not a product roadmap.
 
 ## Core finance tracking
 
@@ -11,16 +11,16 @@
 | Income and expense entry | Users record an amount, date, category, payment method, details, tax, service charge, and optional receipt items. | `AddExpenseModal.tsx`, `tracker.ts` |
 | Possible-duplicate warning | Users are warned before saving a likely duplicate but can continue intentionally. | `duplicateGuard.ts`, `AddExpenseModal.tsx` |
 | Edit and delete transactions | Existing transactions can be changed or removed from the finance record. | `tracker.ts`, dashboard/receipt callbacks in `App.tsx` |
-| Monthly dashboard | Users can select a month, view income, expenses, balance, category distribution, trends, and searchable recent receipts. | `HomeDashboardView.tsx` |
+| Monthly dashboard | Users can select a month, view income, expenses, balance, category distribution, trends, and searchable recent receipts. Tax and Service Charge badges and row indicators show actual values from AI-scanned receipts. | `HomeDashboardView.tsx` |
 
 ## Receipt capture and review
 
 | Feature | User outcome | Primary implementation |
 | --- | --- | --- |
-| Manual receipt details | Receipt records include tax, service charge, and structured items. | `AddExpenseModal.tsx`, `tracker.ts`, `sheetSchema.ts` |
-| Optional AI receipt scan | A photo is resized, sent to Gemini, validated, and converted into a pre-filled transaction draft. | `ScanReceiptModal.tsx`, `useReceiptScannerViewModel.ts`, `receiptVision.ts` |
+| Manual receipt details | Manual entries default tax and service charge to 0; users record structured items and optional notes. | `AddExpenseModal.tsx`, `tracker.ts`, `sheetSchema.ts` |
+| Optional AI receipt scan | A photo is resized, sent to Gemini, validated, and converted into a pre-filled transaction draft including extracted tax and service charge. | `ScanReceiptModal.tsx`, `useReceiptScannerViewModel.ts`, `receiptVision.ts` |
 | Receipt image cache | A saved receipt can be shown locally on the device that captured it. | `imageStore.ts`, `ReceiptDetailsView.tsx` |
-| Receipt detail views | Users view totals, item search, visual analysis, and the locally cached image where available. | `ReceiptDetailsView.tsx` |
+| Receipt detail views | Users view totals, item search, visual analysis, breakdown (Subtotal, Tax, Service Charge), and the locally cached image where available. | `ReceiptDetailsView.tsx` |
 
 ## Assisted import
 

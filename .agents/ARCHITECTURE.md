@@ -2,7 +2,7 @@
 
 <!-- MCP audit: workspace-agents.list_agents — read-only workspace context lookup, 2026-07-27. -->
 
-> Implementation snapshot: 2026-07-27. This document describes the current worktree, including uncommitted schema changes.
+> Implementation snapshot: 2026-07-30. This document describes the current worktree, including uncommitted schema changes.
 
 ## Overview
 
@@ -65,6 +65,8 @@ Receipt images are deliberately not stored in Sheets. They are an IndexedDB cach
 
 `RecurringBills.paymentType` is the newest schema column. It is appended after `active` to preserve positional compatibility with existing sheets. During initialization, `SheetsRepository.initializeTemplate()` extends an older header; bill creation and editing default a missing payment method to `Online banking`, and bill payment carries it into the expense transaction.
 
+Tax (`tax`) and Service Charge (`serviceCharge`) on the dashboard read model accumulate strictly from stored transaction records populated via the AI receipt scanner. Un-scanned or manual transactions default tax and service charge to 0, ensuring no dynamic category percentage estimates (e.g. 6% or 4%) are applied artificially.
+
 ## Authentication and external services
 
 | Service | Use | Boundary |
@@ -84,7 +86,7 @@ Receipt images are deliberately not stored in Sheets. They are an IndexedDB cach
 
 ## Deployment and verification
 
-- `npm run build` runs TypeScript project builds followed by the Vite production build.
-- `npm run lint` runs Oxlint.
+- `npm run build` runs TypeScript project builds (`tsc -b`) followed by the Vite production build (`vite build`).
+- `npm run lint` runs Oxlint over application source.
 - Firebase Hosting serves `dist/`; deployment configuration lives in `firebase.json`.
 - There is no automated test suite configured in `package.json`.
