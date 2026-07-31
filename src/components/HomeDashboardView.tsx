@@ -288,6 +288,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                 tx.category === "Food & Dining" ||
                 tx.category === "Shopping" ||
                 tx.category === "Entertainment";
+              const itemCount = tx.items?.length ?? 0;
 
               return (
                 <div
@@ -303,7 +304,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                   <div>
                     <div className="receipt-date">{tx.date}</div>
                     <div className="receipt-title">{tx.description || tx.category}</div>
-                    {isEligibleCategory && <div className="receipt-item-count">4 items</div>}
+                    {itemCount > 0 && <div className="receipt-item-count">{itemCount} {itemCount === 1 ? "item" : "items"}</div>}
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
