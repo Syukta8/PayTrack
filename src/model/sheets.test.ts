@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { coerceCellValue, SheetsRepository } from "./sheets";
+import { SHEETS } from "./sheetSchema";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -52,5 +53,55 @@ describe("SheetsRepository", () => {
 
     fetchMock.mockResolvedValueOnce(mockJson({}, 401));
     await expect(repository.list("bills")).rejects.toThrow("access has expired");
+  });
+
+  it("avoids requests for empty bulk writes and deletes", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const repository = new SheetsRepository("a".repeat(20), "token");
+
+    await repository.appendMany("transactions", []);
+    await repository.deleteMany("transactions", []);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("preserves actionable API failure messages", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockJson({ error: { message: "Permission denied" } }, 403)));
+    await expect(new SheetsRepository("a".repeat(20), "token").list("bills")).rejects.toThrow("Permission denied");
+  });
+
+  it("adds missing tabs and writes headers without touching existing data", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("?fields=sheets.properties.title")) return mockJson({ sheets: [] });
+      if (url.includes(":batchUpdate")) return mockJson({});
+      return mockJson({ values: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new SheetsRepository("a".repeat(20), "token").initializeTemplate();
+
+    const batchRequest = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(batchRequest.requests).toHaveLength(Object.keys(SHEETS).length);
+    const headerWrites = fetchMock.mock.calls.filter(([url, init]) => String(url).includes("valueInputOption=RAW") && init?.method === "PUT");
+    expect(headerWrites).toHaveLength(Object.keys(SHEETS).length);
+  });
+
+  it("extends an older header but rejects a mismatched template", async () => {
+    const existingTabs = Object.values(SHEETS).map((sheet) => ({ properties: { title: sheet.tab } }));
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("?fields=sheets.properties.title")) return mockJson({ sheets: existingTabs });
+      if (url.includes("Transactions!A1%3AZ1")) return mockJson({ values: [["id", "date"]] });
+      const sheet = Object.values(SHEETS).find((definition) => url.includes(`${definition.tab}!`));
+      return mockJson({ values: [sheet?.columns.map(([name]) => String(name)) ?? []] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await new SheetsRepository("a".repeat(20), "token").initializeTemplate();
+    expect(fetchMock.mock.calls.some(([url, init]) => String(url).includes("Transactions!A1") && init?.method === "PUT")).toBe(true);
+
+    fetchMock.mockImplementation((url: string) => url.includes("?fields=sheets.properties.title")
+      ? mockJson({ sheets: existingTabs })
+      : mockJson({ values: [["wrong-column"]] }));
+    await expect(new SheetsRepository("a".repeat(20), "token").initializeTemplate()).rejects.toThrow("does not match the PayTrack template");
   });
 });
