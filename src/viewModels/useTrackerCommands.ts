@@ -6,6 +6,13 @@ import type { MaintenanceItem, RecurringBill, Transaction } from "../model/types
 import type { Tracker } from "../model/tracker";
 
 type ReportError = (message: string) => void;
+export interface ReconciledStatementItem {
+  date: string;
+  amount: number;
+  category: string;
+  description: string;
+  paymentMethod: string;
+}
 
 /** Groups tracker mutations so the application shell consistently reloads and reports errors. */
 export function useTrackerCommands(
@@ -34,6 +41,19 @@ export function useTrackerCommands(
   const setMileage = useCallback((mileage: number) => run((activeTracker) => activeTracker.setMileage(mileage)), [run]);
   const addMaintenance = useCallback((input: Omit<MaintenanceItem, "id" | "active" | "lastServiceMileage">) => run((activeTracker) => activeTracker.addMaintenance(input)), [run]);
   const markMaintenanceDone = useCallback((itemId: string, cost?: number) => run((activeTracker) => activeTracker.markMaintenanceDone(itemId, { cost })), [run]);
+  const importReconciledItems = useCallback((items: ReconciledStatementItem[]) => run(async (activeTracker) => {
+    for (const item of items) {
+      await activeTracker.addTransaction({
+        date: item.date,
+        type: "expense",
+        category: item.category,
+        amount: item.amount,
+        description: item.description,
+        paymentType: item.paymentMethod,
+        remarks: "Reconciled from Bank Statement",
+      });
+    }
+  }), [run]);
 
-  return { submitTransaction, deleteTransaction, markBillPaid, addBill, updateBill, deleteBill, updateTransaction, setMileage, addMaintenance, markMaintenanceDone };
+  return { submitTransaction, deleteTransaction, markBillPaid, addBill, updateBill, deleteBill, updateTransaction, setMileage, addMaintenance, markMaintenanceDone, importReconciledItems };
 }

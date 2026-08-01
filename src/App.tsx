@@ -289,21 +289,7 @@ export default function App() {
             <StatementReconciliationModal
               isOpen={isStatementOpen}
               onClose={() => setIsStatementOpen(false)}
-              onImportReconciledItems={async (items) => {
-                if (!vm.tracker) return;
-                for (const item of items) {
-                  await vm.tracker.addTransaction({
-                    date: item.date,
-                    type: "expense",
-                    category: item.category,
-                    amount: item.amount,
-                    description: item.description,
-                    paymentType: item.paymentMethod,
-                    remarks: "Reconciled from Bank Statement",
-                  });
-                }
-                await vm.reload();
-              }}
+              onImportReconciledItems={commands.importReconciledItems}
             />
 
             {/* Add Expense Modal Drawer */}
