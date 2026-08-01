@@ -218,6 +218,23 @@ function describeHttpFailure(status: number, message: string | undefined): strin
   return `${hint}${message ? ` Details: ${message}` : ""} Nothing has been saved.`;
 }
 
+/** Decodes a successful Gemini response before passing only trusted JSON into receipt validation. */
+function decodeVisionPayload(payload: VisionPayload | null): ScanOutcome {
+  if (payload?.promptFeedback?.blockReason) {
+    return { ok: false, reason: `The scanner refused this image (${payload.promptFeedback.blockReason}). Please use a photo of a printed receipt.` };
+  }
+  const finishReason = payload?.candidates?.[0]?.finishReason;
+  if (finishReason === "MAX_TOKENS") return { ok: false, reason: "The receipt was too long for the scanner to finish reading, so the result was incomplete. Try scanning it in two halves." };
+  if (finishReason && finishReason !== "STOP") return { ok: false, reason: `The scanner stopped early (${finishReason}) and returned no usable result. Please retake the photo and try again.` };
+  const rawText = payload?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+  if (!rawText) return { ok: false, reason: "The scanner returned an empty response, which usually means the image could not be interpreted. Please retake the photo." };
+  try {
+    return validateReceipt(JSON.parse(rawText));
+  } catch {
+    return { ok: false, reason: "The scanner's response was not valid JSON, so it could not be trusted. Please try scanning again." };
+  }
+}
+
 /** Sends one receipt image for extraction and returns a validated receipt or a reason.
  * Never throws for an expected failure — every outcome is reportable to the user. */
 export async function scanReceipt({ apiKey, base64Data, mimeType, fetchImpl, sleepImpl }: ScanRequest): Promise<ScanOutcome> {
@@ -258,30 +275,5 @@ export async function scanReceipt({ apiKey, base64Data, mimeType, fetchImpl, sle
 
   if (!response) return { ok: false, reason: lastReason };
 
-  const payload = (await response.json().catch(() => null)) as VisionPayload | null;
-  if (payload?.promptFeedback?.blockReason) {
-    return { ok: false, reason: `The scanner refused this image (${payload.promptFeedback.blockReason}). Please use a photo of a printed receipt.` };
-  }
-
-  const finishReason = payload?.candidates?.[0]?.finishReason;
-  if (finishReason === "MAX_TOKENS") {
-    return { ok: false, reason: "The receipt was too long for the scanner to finish reading, so the result was incomplete. Try scanning it in two halves." };
-  }
-  if (finishReason && finishReason !== "STOP") {
-    return { ok: false, reason: `The scanner stopped early (${finishReason}) and returned no usable result. Please retake the photo and try again.` };
-  }
-
-  const rawText = payload?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
-  if (!rawText) {
-    return { ok: false, reason: "The scanner returned an empty response, which usually means the image could not be interpreted. Please retake the photo." };
-  }
-
-  let rawReceipt: unknown;
-  try {
-    rawReceipt = JSON.parse(rawText);
-  } catch {
-    return { ok: false, reason: "The scanner's response was not valid JSON, so it could not be trusted. Please try scanning again." };
-  }
-
-  return validateReceipt(rawReceipt);
+  return decodeVisionPayload((await response.json().catch(() => null)) as VisionPayload | null);
 }
