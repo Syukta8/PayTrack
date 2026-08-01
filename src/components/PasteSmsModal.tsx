@@ -1,16 +1,11 @@
 import React, { useState } from "react";
-import type { PaymentType } from "../model/types";
+import { parseSmsExpense } from "../model/smsParser";
+import type { ParsedSmsExpense } from "../model/smsParser";
 
 interface PasteSmsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSmsParsed: (data: {
-    amount: number;
-    category: string;
-    description: string;
-    date: string;
-    paymentMethod: string;
-  }) => void;
+  onSmsParsed: (data: ParsedSmsExpense) => void;
 }
 
 export const PasteSmsModal: React.FC<PasteSmsModalProps> = ({
@@ -35,49 +30,10 @@ export const PasteSmsModal: React.FC<PasteSmsModalProps> = ({
       return;
     }
 
-    try {
-      // Extract Amount (e.g., RM150.00, MYR 50, 12.50)
-      const amountMatch = rawText.match(/(?:RM|MYR)?\s*(\d+(?:\.\d{1,2})?)/i);
-      const amount = amountMatch ? parseFloat(amountMatch[1]) : 0;
-
-      // Detect Payment Method. Values come from PAYMENT_TYPES so the picker, the sheet and
-      // this parser agree. SPayLater is matched first because it is the most specific.
-      let paymentMethod: PaymentType = "Online banking";
-      if (/spaylater/i.test(rawText)) paymentMethod = "SPayLater";
-      else if (/qr|duitnow/i.test(rawText)) paymentMethod = "QR code";
-      else if (/credit/i.test(rawText)) paymentMethod = "Credit card";
-      else if (/debit|card/i.test(rawText)) paymentMethod = "Debit card";
-
-      // Detect Category
-      let category = "Personal";
-      if (/food|kopitiam|restaurant|mcd|kfc|starbucks|zus|grabfood|foodpanda/i.test(rawText)) {
-        category = "Food & Dining";
-      } else if (/petronas|shell|caltex|toll|touch n go|tng/i.test(rawText)) {
-        category = "Transport";
-      } else if (/unifi|tnb|syabas|air|electricity|utility/i.test(rawText)) {
-        category = "Bills & Utilities";
-      } else if (/shopee|lazada|mydin|lotus|watson|guardian/i.test(rawText)) {
-        category = "Shopping";
-      }
-
-      // Merchant/Description extraction
-      const lines = rawText.split("\n").map((l) => l.trim()).filter(Boolean);
-      const description = lines[0]?.substring(0, 35) || "SMS Captured Expense";
-
-      onSmsParsed({
-        amount,
-        category,
-        description,
-        date: new Date().toISOString().split("T")[0],
-        paymentMethod,
-      });
-
-      setRawText("");
-      setError(null);
-      onClose();
-    } catch {
-      setError("Unable to parse text. Please double check the text format.");
-    }
+    onSmsParsed(parseSmsExpense(rawText));
+    setRawText("");
+    setError(null);
+    onClose();
   };
 
   return (
