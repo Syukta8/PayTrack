@@ -33,7 +33,7 @@ export function useTrackerCommands(
   const updateTransaction = useCallback((transactionId: string, input: Partial<Omit<Transaction, "id" | "createdAt">>) => run((activeTracker) => activeTracker.updateTransaction(transactionId, input)), [run]);
   const setMileage = useCallback((mileage: number) => run((activeTracker) => activeTracker.setMileage(mileage)), [run]);
   const addMaintenance = useCallback((input: Omit<MaintenanceItem, "id" | "active" | "lastServiceMileage">) => run((activeTracker) => activeTracker.addMaintenance(input)), [run]);
-  const markMaintenanceDone = useCallback((itemId: string, cost: number) => run((activeTracker) => activeTracker.markMaintenanceDone(itemId, { cost })), [run]);
+  const markMaintenanceDone = useCallback((itemId: string, cost?: number) => run((activeTracker) => activeTracker.markMaintenanceDone(itemId, { cost })), [run]);
 
   return { submitTransaction, deleteTransaction, markBillPaid, addBill, updateBill, deleteBill, updateTransaction, setMileage, addMaintenance, markMaintenanceDone };
 }

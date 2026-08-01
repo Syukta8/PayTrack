@@ -1,5 +1,3 @@
-import React from "react";
-
 export interface ScannerFeedbackProps {
   isScanning: boolean;
   statusText: string;

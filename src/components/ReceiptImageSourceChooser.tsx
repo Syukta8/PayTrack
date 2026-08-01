@@ -1,5 +1,3 @@
-import React from "react";
-
 export interface ReceiptImageSourceChooserProps {
   selectedImage: string | null;
   onChooseCamera: () => void;
