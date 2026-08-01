@@ -19,3 +19,4 @@ AGENTS.md
 .mcp.json
 .vscode/mcp.json
 .vscode/extensions.json
+coverage/
