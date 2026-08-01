@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { Transaction, ReceiptItem } from "../model/types";
 import { getReceiptImage, getReceiptItems } from "../model/imageStore";
+import { restoreLegacyReceiptItems } from "../model/receiptItems";
 
 interface ReceiptDetailsViewProps {
   receipt: Transaction;
@@ -15,53 +16,32 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [localImage, setLocalImage] = useState<string | null>(null);
   const [subitems, setSubitems] = useState<ReceiptItem[]>([]);
+  const [loadWarning, setLoadWarning] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    if (receipt.id) {
-      getReceiptImage(receipt.id).then((stored) => {
-        if (isMounted && stored) setLocalImage(stored);
-      });
+    setLoadWarning(null);
+    setLocalImage(null);
+    setSubitems([]);
 
-      // The sheet is the authority for line items. IndexedDB and the packed remarks payload
-      // are read only to recover receipts saved by earlier versions.
-      if (receipt.items && receipt.items.length > 0) {
-        setSubitems(receipt.items);
-        return () => {
-          isMounted = false;
-        };
-      }
+    const load = async () => {
+      if (!receipt.id) return;
+      const [storedImage, storedItems] = await Promise.all([
+        getReceiptImage(receipt.id),
+        receipt.items?.length ? Promise.resolve(null) : getReceiptItems(receipt.id),
+      ]);
+      if (!isMounted) return;
+      setLocalImage(storedImage);
+      setSubitems(receipt.items?.length ? receipt.items : storedItems?.length ? storedItems : restoreLegacyReceiptItems(receipt));
+    };
 
-      getReceiptItems(receipt.id).then((storedItems) => {
-        if (isMounted) {
-          if (storedItems && storedItems.length > 0) {
-            setSubitems(storedItems);
-          } else if (receipt.remarks && receipt.remarks.includes("| ITEMS:")) {
-            try {
-              const rawJson = receipt.remarks.split("| ITEMS:")[1]?.trim();
-              if (rawJson) {
-                const parsedShort = JSON.parse(rawJson);
-                const restored: ReceiptItem[] = parsedShort.map((it: { n: string; q: number; p: number; t: number }, idx: number) => ({
-                  id: `item_restored_${idx}`,
-                  name: it.n || `Item #${idx + 1}`,
-                  qty: it.q || 1,
-                  unitPrice: it.p || 0,
-                  totalPrice: it.t || 0,
-                  category: receipt.category,
-                }));
-                setSubitems(restored);
-              }
-            } catch {
-              // Ignore JSON parse error
-            }
-          }
-        }
-      });
-    }
+    void load().catch(() => {
+      if (isMounted) setLoadWarning("Some receipt data could not be loaded from this browser. Your Google Sheet records are unchanged.");
+    });
     return () => {
       isMounted = false;
     };
-  }, [receipt.id, receipt.items, receipt.remarks, receipt.category]);
+  }, [receipt]);
 
   const filteredItems = subitems.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -105,6 +85,11 @@ export const ReceiptDetailsView: React.FC<ReceiptDetailsViewProps> = ({
       </div>
 
       {/* Tab Contents */}
+      {loadWarning && (
+        <div role="status" style={{ margin: "12px 20px 0", color: "#92400e", fontSize: "0.78rem" }}>
+          ⚠️ {loadWarning}
+        </div>
+      )}
       {activeTab === "details" && (
         <div>
           {/* Store Overview Card */}
