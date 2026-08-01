@@ -4,22 +4,12 @@ import { PAYMENT_TYPES } from "../model/types";
 import type { ReceiptItem, Transaction } from "../model/types";
 import { buildExpensePrefill } from "../model/expensePrefill";
 import type { ExpensePrefillSource } from "../model/expensePrefill";
+import type { TransactionDraft } from "../model/transactionSubmission";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: {
-    type: "expense" | "income";
-    amount: number;
-    category: string;
-    paymentMethod: string;
-    date: string;
-    note: string;
-    imageUrl?: string;
-    tax?: number;
-    serviceCharge?: number;
-    items?: ReceiptItem[];
-  }) => void;
+  onSubmit: (data: TransactionDraft) => void;
   initialData?: ExpensePrefillSource | null;
   /** Already-recorded transactions, used only to warn about a probable duplicate scan. */
   existingTransactions?: Transaction[];

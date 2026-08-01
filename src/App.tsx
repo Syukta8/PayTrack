@@ -14,8 +14,10 @@ import { MaintenanceView } from "./components/MaintenanceView";
 import { ScanReceiptModal } from "./components/ScanReceiptModal";
 import { PasteSmsModal } from "./components/PasteSmsModal";
 import { StatementReconciliationModal } from "./components/StatementReconciliationModal";
-import { saveReceiptImage } from "./model/imageStore";
-import type { Transaction, ReceiptItem } from "./model/types";
+import type { Transaction } from "./model/types";
+import { submitTransactionDraft } from "./model/transactionSubmission";
+import type { TransactionDraft } from "./model/transactionSubmission";
+import type { ExpensePrefillSource } from "./model/expensePrefill";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -31,18 +33,7 @@ export default function App() {
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [isPasteSmsOpen, setIsPasteSmsOpen] = useState(false);
   const [isStatementOpen, setIsStatementOpen] = useState(false);
-  const [scannedData, setScannedData] = useState<{
-    amount?: number;
-    category?: string;
-    description?: string;
-    date?: string;
-    note?: string;
-    imageUrl?: string;
-    paymentMethod?: string;
-    tax?: number;
-    serviceCharge?: number;
-    items?: ReceiptItem[];
-  } | null>(null);
+  const [scannedData, setScannedData] = useState<ExpensePrefillSource | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     return (localStorage.getItem("paytrack.theme") as ThemeMode) || "system";
   });
@@ -90,44 +81,10 @@ export default function App() {
     }
   }
 
-  const handleAddTransactionSubmit = async (formData: {
-    type: "expense" | "income";
-    amount: number;
-    category: string;
-    paymentMethod: string;
-    date: string;
-    note: string;
-    imageUrl?: string;
-    tax?: number;
-    serviceCharge?: number;
-    items?: ReceiptItem[];
-  }) => {
+  const handleAddTransactionSubmit = async (formData: TransactionDraft) => {
     if (!vm.tracker) return;
     try {
-      const imgData = formData.imageUrl || scannedData?.imageUrl;
-      const subitems = formData.items || scannedData?.items;
-
-      // Line items live in their own sheet tab now, so they are no longer packed into
-      // remarks (where anything past ~500 characters was silently dropped). remarks is left
-      // empty: it previously held an invented Google Drive path for a file that was never
-      // uploaded anywhere.
-      const createdId = await vm.tracker.addTransaction({
-        date: formData.date,
-        type: formData.type,
-        amount: formData.amount,
-        category: formData.category,
-        paymentType: formData.paymentMethod,
-        description: formData.note,
-        remarks: "",
-        tax: formData.tax ?? scannedData?.tax ?? 0,
-        serviceCharge: formData.serviceCharge ?? scannedData?.serviceCharge ?? 0,
-        items: subitems,
-      });
-
-      // IndexedDB is now an image-only cache; the line items were written to the sheet above.
-      if (createdId && imgData) {
-        await saveReceiptImage(createdId, imgData);
-      }
+      await submitTransactionDraft(vm.tracker, formData, scannedData);
       await vm.reload();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Failed to add transaction.");
