@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import type { BillStatus, Recurrence, Transaction } from "../model/types";
-import { PAYMENT_TYPES } from "../model/types";
 import { buildBnplPlan } from "../model/bnplPlan";
+import { BillEditorModal } from "./BillEditorModal";
 
 interface BillsViewProps {
   bills: BillStatus[];
@@ -466,97 +466,22 @@ export const BillsView: React.FC<BillsViewProps> = ({
         </div>
       </div>
 
-      {/* Add / Edit Bill Drawer Modal */}
-      {isAddOpen && (
-        <div className="modal-overlay" onClick={() => setIsAddOpen(false)}>
-          <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-drag-handle" />
-            <div className="sheet-header">
-              <button className="sheet-action-btn save" onClick={handleSaveBill}>
-                Save
-              </button>
-              <h3>{editingBillId ? "Edit Recurring Bill" : "Add Recurring Bill"}</h3>
-              <button className="sheet-action-btn cancel" onClick={() => setIsAddOpen(false)}>
-                Cancel
-              </button>
-            </div>
-
-            <div className="form-field-card">
-              <div className="hero-eyebrow">BILL NAME</div>
-              <input
-                type="text"
-                placeholder="e.g. Unifi Fiber, Electric Bill"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-
-              <div className="hero-eyebrow" style={{ marginTop: 14 }}>AMOUNT (RM)</div>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={amountStr}
-                onChange={(e) => setAmountStr(e.target.value)}
-              />
-
-              <div className="hero-eyebrow" style={{ marginTop: 14 }}>DUE DAY OF MONTH</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, margin: "8px 0 14px", padding: 8, background: "var(--bg-subtle)", borderRadius: 12 }}>
-                {Array.from({ length: 31 }, (_, i) => {
-                  const dayNum = i + 1;
-                  const isSelected = parseInt(dueDayStr, 10) === dayNum;
-                  return (
-                    <button
-                      key={dayNum}
-                      type="button"
-                      onClick={() => setDueDayStr(String(dayNum))}
-                      style={{
-                        padding: "6px 0",
-                        fontSize: "0.78rem",
-                        fontWeight: isSelected ? 800 : 500,
-                        borderRadius: 8,
-                        backgroundColor: isSelected ? "#0f172a" : "transparent",
-                        color: isSelected ? "#ffffff" : "var(--text-main)",
-                        border: isSelected ? "none" : "1px solid transparent",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      {dayNum}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="hero-eyebrow" style={{ marginTop: 14 }}>RECURRENCE</div>
-              <div className="pill-options-row" style={{ marginBottom: 14 }}>
-                {(["monthly", "weekly", "yearly"] as Recurrence[]).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    className={`opt-pill ${recurrence === r ? "active" : ""}`}
-                    onClick={() => setRecurrence(r)}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-
-              <div className="hero-eyebrow" style={{ marginTop: 8 }}>DEFAULT PAYMENT METHOD</div>
-              <div className="pill-options-row" style={{ marginBottom: 0 }}>
-                {PAYMENT_TYPES.map((pt) => (
-                  <button
-                    key={pt}
-                    type="button"
-                    className={`opt-pill ${paymentType === pt ? "active" : ""}`}
-                    onClick={() => setPaymentType(pt)}
-                  >
-                    {pt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <BillEditorModal
+        isOpen={isAddOpen}
+        isEditing={Boolean(editingBillId)}
+        name={name}
+        amount={amountStr}
+        dueDay={dueDayStr}
+        recurrence={recurrence}
+        paymentType={paymentType}
+        onClose={() => setIsAddOpen(false)}
+        onSave={handleSaveBill}
+        onNameChange={setName}
+        onAmountChange={setAmountStr}
+        onDueDayChange={setDueDayStr}
+        onRecurrenceChange={setRecurrence}
+        onPaymentTypeChange={setPaymentType}
+      />
 
       {/* Edit BNPL Plan Drawer Modal */}
       {isEditBNPLOpen && (
