@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { QUALITY_MESSAGE, validateReceipt } from "./receiptVision";
+import { describe, expect, it, vi } from "vitest";
+import { QUALITY_MESSAGE, scanReceipt, validateReceipt } from "./receiptVision";
 
 const readableReceipt = {
   merchantName: "Kedai Makan", totalAmount: "12.50", date: "2026-07-31",
@@ -20,5 +20,22 @@ describe("validateReceipt", () => {
   it("rejects low-quality and invalid totals", () => {
     expect(validateReceipt({ ...readableReceipt, isQualityLow: true })).toEqual({ ok: false, reason: QUALITY_MESSAGE });
     expect(validateReceipt({ ...readableReceipt, totalAmount: "not money" })).toEqual({ ok: false, reason: QUALITY_MESSAGE });
+  });
+
+  it("retries a transient API failure before validating the response", async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { message: "busy" } }), { status: 429 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(readableReceipt) }] }, finishReason: "STOP" }] })));
+    const outcome = await scanReceipt({ apiKey: "test", base64Data: "image", mimeType: "image/jpeg", fetchImpl, sleepImpl: async () => undefined });
+    expect(outcome).toMatchObject({ ok: true });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a non-JSON scanner result", async () => {
+    const outcome = await scanReceipt({
+      apiKey: "test", base64Data: "image", mimeType: "image/jpeg",
+      fetchImpl: async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: "not-json" }] }, finishReason: "STOP" }] })),
+    });
+    expect(outcome).toEqual(expect.objectContaining({ ok: false, reason: expect.stringContaining("not valid JSON") }));
   });
 });

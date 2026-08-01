@@ -98,6 +98,27 @@ function localToday(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
+/** Converts only complete, financially safe scanner line items into ledger-ready values. */
+function parseReceiptItems(value: unknown): ScannedItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const item = entry as Record<string, unknown>;
+    const name = typeof item.name === "string" ? item.name.trim() : "";
+    const qty = finiteNumber(item.qty);
+    const unitPrice = finiteNumber(item.unitPrice);
+    const totalPrice = finiteNumber(item.totalPrice) ?? (qty !== null && unitPrice !== null ? qty * unitPrice : null);
+    if (!name || totalPrice === null || totalPrice < 0) return [];
+    return [{
+      name,
+      qty: qty !== null && qty > 0 ? qty : 1,
+      unitPrice: unitPrice !== null && unitPrice >= 0 ? unitPrice : totalPrice,
+      totalPrice,
+      category: typeof item.category === "string" && item.category.trim() ? item.category.trim() : undefined,
+    }];
+  });
+}
+
 /** The extraction instruction. Payment labels come from PAYMENT_TYPES so the model is asked
  * for the same vocabulary the picker and the sheet use. */
 export function buildPrompt(): string {
@@ -150,27 +171,7 @@ export function validateReceipt(raw: unknown): ScanOutcome {
   const merchantName = typeof source.merchantName === "string" && source.merchantName.trim() ? source.merchantName.trim() : "";
   if (!merchantName) return { ok: false, reason: QUALITY_MESSAGE };
 
-  const rawItems = Array.isArray(source.items) ? source.items : [];
-  const items: ScannedItem[] = [];
-  rawItems.forEach((entry) => {
-    if (!entry || typeof entry !== "object") return;
-    const item = entry as Record<string, unknown>;
-    const name = typeof item.name === "string" ? item.name.trim() : "";
-    const qty = finiteNumber(item.qty);
-    const unitPrice = finiteNumber(item.unitPrice);
-    let totalPrice = finiteNumber(item.totalPrice);
-    if (totalPrice === null && qty !== null && unitPrice !== null) totalPrice = qty * unitPrice;
-    // Drop unusable rows rather than guess: a short items list surfaces as a visible
-    // subtotal mismatch in the add-expense form instead of a silently wrong total.
-    if (!name || totalPrice === null || totalPrice < 0) return;
-    items.push({
-      name,
-      qty: qty !== null && qty > 0 ? qty : 1,
-      unitPrice: unitPrice !== null && unitPrice >= 0 ? unitPrice : totalPrice,
-      totalPrice,
-      category: typeof item.category === "string" && item.category.trim() ? item.category.trim() : undefined,
-    });
-  });
+  const items = parseReceiptItems(source.items);
 
   return {
     ok: true,
@@ -205,18 +206,15 @@ interface VisionPayload {
 
 /** Turns an HTTP failure into something the user can act on. */
 function describeHttpFailure(status: number, message: string | undefined): string {
-  const hint =
-    status === 401 || status === 403
-      ? "Your Gemini API key is invalid or lacks access to the Generative Language API."
-      : status === 404
-        ? `The configured model (${GEMINI_MODEL}) is not available to your API key. Set VITE_GEMINI_MODEL to one your key can use.`
-        : status === 400
-          ? "The scan request was rejected as malformed, which usually means an invalid API key or an unsupported image."
-          : status === 429
-            ? "The Gemini API rate limit was hit. Wait a moment and scan again."
-            : status === 413
-              ? "The receipt image was too large for the API. Try a tighter crop of the receipt."
-              : `The Gemini API returned an error (${status}).`;
+  const hints: Record<number, string> = {
+    400: "The scan request was rejected as malformed, which usually means an invalid API key or an unsupported image.",
+    401: "Your Gemini API key is invalid or lacks access to the Generative Language API.",
+    403: "Your Gemini API key is invalid or lacks access to the Generative Language API.",
+    404: `The configured model (${GEMINI_MODEL}) is not available to your API key. Set VITE_GEMINI_MODEL to one your key can use.`,
+    413: "The receipt image was too large for the API. Try a tighter crop of the receipt.",
+    429: "The Gemini API rate limit was hit. Wait a moment and scan again.",
+  };
+  const hint = hints[status] ?? `The Gemini API returned an error (${status}).`;
   return `${hint}${message ? ` Details: ${message}` : ""} Nothing has been saved.`;
 }
 
