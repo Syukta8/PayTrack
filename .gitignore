@@ -13,3 +13,9 @@ AGENTS.md
 
 # Personal document files
 *.pdf
+
+# Repowise (local codebase index — machine-specific, do not commit)
+.repowise/
+.mcp.json
+.vscode/mcp.json
+.vscode/extensions.json
