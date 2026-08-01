@@ -11,6 +11,9 @@ vi.mock("../model/receiptItems", () => ({ restoreLegacyReceiptItems: vi.fn(() =>
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.mocked(getReceiptImage).mockResolvedValue(null);
+  vi.mocked(getReceiptItems).mockResolvedValue([]);
+  vi.mocked(restoreLegacyReceiptItems).mockReturnValue([]);
 });
 
 const receipt = {
@@ -50,5 +53,15 @@ describe("ReceiptDetailsView", () => {
 
     expect((await screen.findByRole("status")).textContent).toContain("Some receipt data could not be loaded");
     expect(screen.getByText("Lunch")).toBeTruthy();
+  });
+
+  it("filters line items and reports a fee-aware discrepancy", async () => {
+    vi.mocked(getReceiptImage).mockResolvedValue(null);
+    render(<ReceiptDetailsView onBack={vi.fn()} receipt={{ ...receipt, amount: 20, paymentType: "SPayLater 3M", tax: 0, serviceCharge: 0, items: [{ id: "tea", name: "Tea", qty: 1, unitPrice: 5, totalPrice: 5 }, { id: "rice", name: "Rice", qty: 1, unitPrice: 5, totalPrice: 5 }] }} />);
+    await screen.findByText("Tea");
+    fireEvent.change(screen.getByPlaceholderText("Search by item name"), { target: { value: "rice" } });
+    expect(screen.getByText("Rice")).toBeTruthy();
+    expect(screen.queryByText("Tea")).toBeNull();
+    expect(screen.getByText(/Subitem Discrepancy Detected/)).toBeTruthy();
   });
 });
