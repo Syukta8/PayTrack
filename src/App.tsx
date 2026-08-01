@@ -17,9 +17,9 @@ import { StatementReconciliationModal } from "./components/StatementReconciliati
 import { SettingsView } from "./components/SettingsView";
 import type { ThemeMode } from "./components/SettingsView";
 import type { Transaction } from "./model/types";
-import { submitTransactionDraft } from "./model/transactionSubmission";
 import type { TransactionDraft } from "./model/transactionSubmission";
 import type { ExpensePrefillSource } from "./model/expensePrefill";
+import { useTrackerCommands } from "./viewModels/useTrackerCommands";
 
 export default function App() {
   const { user, loading: authLoading, sheetsAccessToken, configurationError, signIn, signOut } = useAuth();
@@ -42,6 +42,7 @@ export default function App() {
   const [sheetLink, setSheetLink] = useState("");
   const [initializing, setInitializing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const commands = useTrackerCommands(vm.tracker, vm.reload, setActionError);
 
   // Handle Theme switching (Light / Dark / System)
   useEffect(() => {
@@ -82,13 +83,7 @@ export default function App() {
   }
 
   const handleAddTransactionSubmit = async (formData: TransactionDraft) => {
-    if (!vm.tracker) return;
-    try {
-      await submitTransactionDraft(vm.tracker, formData, scannedData);
-      await vm.reload();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to add transaction.");
-    }
+    await commands.submitTransaction(formData, scannedData);
   };
 
   if (authLoading) {
@@ -211,11 +206,7 @@ export default function App() {
               <HomeDashboardView
                 transactions={transactions}
                 onSelectReceipt={setSelectedReceipt}
-                onDeleteTransaction={async (transactionId) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.deleteTransaction(transactionId);
-                  await vm.reload();
-                }}
+                onDeleteTransaction={commands.deleteTransaction}
               />
             )}
 
@@ -223,36 +214,12 @@ export default function App() {
               <BillsView
                 bills={bills}
                 transactions={transactions}
-                onMarkPaid={async (billId) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.markBillPaid(billId);
-                  await vm.reload();
-                }}
-                onAddBill={async (billInput) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.addBill(billInput);
-                  await vm.reload();
-                }}
-                onUpdateBill={async (billId, billInput) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.updateBill(billId, billInput);
-                  await vm.reload();
-                }}
-                onDeleteBill={async (billId) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.deleteBill(billId);
-                  await vm.reload();
-                }}
-                onDeleteTransaction={async (transactionId) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.deleteTransaction(transactionId);
-                  await vm.reload();
-                }}
-                onUpdateTransaction={async (transactionId, updated) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.updateTransaction(transactionId, updated);
-                  await vm.reload();
-                }}
+                onMarkPaid={commands.markBillPaid}
+                onAddBill={commands.addBill}
+                onUpdateBill={commands.updateBill}
+                onDeleteBill={commands.deleteBill}
+                onDeleteTransaction={commands.deleteTransaction}
+                onUpdateTransaction={commands.updateTransaction}
               />
             )}
 
@@ -260,21 +227,9 @@ export default function App() {
               <MaintenanceView
                 maintenance={maintenance}
                 carInfo={carInfo}
-                onSetMileage={async (mileage) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.setMileage(mileage);
-                  await vm.reload();
-                }}
-                onAddMaintenance={async (itemInput) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.addMaintenance(itemInput);
-                  await vm.reload();
-                }}
-                onMarkDone={async (itemId, cost) => {
-                  if (!vm.tracker) return;
-                  await vm.tracker.markMaintenanceDone(itemId, { cost });
-                  await vm.reload();
-                }}
+                onSetMileage={commands.setMileage}
+                onAddMaintenance={commands.addMaintenance}
+                onMarkDone={commands.markMaintenanceDone}
               />
             )}
 
