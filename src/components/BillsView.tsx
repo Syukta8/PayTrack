@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import type { BillStatus, Recurrence, Transaction } from "../model/types";
 import { PAYMENT_TYPES } from "../model/types";
+import { buildBnplPlan } from "../model/bnplPlan";
 
 interface BillsViewProps {
   bills: BillStatus[];
@@ -266,17 +267,9 @@ export const BillsView: React.FC<BillsViewProps> = ({
         <div className="section-card">
           {bnplItems.length > 0 ? (
             bnplItems.map((item) => {
-              const match = (item.paymentType + " " + item.description + " " + (item.remarks || "")).match(/SPayLater\s*(\d+)M/i);
-              const tenureMonths = match ? parseInt(match[1], 10) : 1;
-              const monthlyAmount = item.amount / tenureMonths;
-
-              // Read paid month indices from localStorage cache
               const paidCacheKey = `paytrack.bnplPaid_${item.id}`;
-              const storedPaidStr = localStorage.getItem(paidCacheKey);
-              const paidMonths: number[] = storedPaidStr ? JSON.parse(storedPaidStr) : [1]; // Default month 1 paid on purchase date
-
+              const { tenureMonths, monthlyAmount, paidMonths, progressPct, schedule } = buildBnplPlan(item, localStorage.getItem(paidCacheKey));
               const paidCount = paidMonths.length;
-              const progressPct = Math.min(100, Math.round((paidCount / tenureMonths) * 100));
 
               const toggleMonthPaid = (monthNum: number) => {
                 let updated: number[];
@@ -290,23 +283,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 setBusyId(`bnpl_${Date.now()}`);
                 setTimeout(() => setBusyId(null), 50);
               };
-
-              // Compute monthly schedule dates
-              const baseDateParts = item.date.split("-").map(Number);
-              const schedule = Array.from({ length: tenureMonths }, (_, idx) => {
-                const monthNum = idx + 1;
-                let y = baseDateParts[0] || new Date().getFullYear();
-                let m = (baseDateParts[1] || new Date().getMonth() + 1) + idx;
-                let d = baseDateParts[2] || 1;
-                while (m > 12) {
-                  m -= 12;
-                  y += 1;
-                }
-                const formattedDate = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-                const isPaid = paidMonths.includes(monthNum);
-
-                return { monthNum, date: formattedDate, isPaid };
-              });
 
               return (
                 <div
