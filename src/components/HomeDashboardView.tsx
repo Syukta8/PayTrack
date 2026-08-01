@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import type { Transaction } from "../model/types";
+import { buildDashboardMetrics } from "../model/dashboardMetrics";
 
 interface HomeDashboardViewProps {
   transactions: Transaction[];
@@ -9,7 +10,6 @@ interface HomeDashboardViewProps {
 }
 
 const CATEGORY_COLORS = ["#3b82f6", "#2563eb", "#8b5cf6", "#f97316", "#ec4899", "#22c55e", "#06b6d4", "#a855f7"];
-const BAR_COLORS = ["#a855f7", "#f97316", "#ec4899", "#06b6d4", "#78350f", "#3b82f6", "#10b981"];
 
 export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   transactions,
@@ -32,94 +32,16 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
     ? selectedMonth
     : availableMonths[0] || new Date().toISOString().slice(0, 7);
 
-  // Filter transactions for selected target month
-  const monthTransactions = transactions.filter((t) => t.date.startsWith(targetYearMonth));
+  const metrics = buildDashboardMetrics(transactions, targetYearMonth);
+  const { monthTransactions, expense: totalExpense, balance: remainingBalance, tax: dynamicTax, serviceCharge: dynamicServiceCharge, rhythmTrendData, pieData, subcategoryData, firstDay: firstDayStr, lastDay: lastDayStr } = metrics;
+  const [yearStr, monthStr] = targetYearMonth.split("-");
+  const yearNum = Number(yearStr);
+  const monthName = new Date(yearNum, Number(monthStr) - 1, 1).toLocaleString("en-US", { month: "short" });
 
   const filteredTransactions = monthTransactions.filter((t) =>
     (t.description || t.category).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Calculate Salary Income for selected month
-  const salaryIncome = monthTransactions
-    .filter((t) => t.type === "income" || t.category === "Salary")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // Calculate Total Expense for selected month
-  const totalExpense = monthTransactions
-    .filter((t) => t.type === "expense" || t.category !== "Salary")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // Remaining Balance = Salary Income - Total Expense
-  const remainingBalance = salaryIncome - totalExpense;
-
-  const [yearStr, monthStr] = targetYearMonth.split("-");
-  const yearNum = parseInt(yearStr, 10);
-  const monthNum = parseInt(monthStr, 10);
-  const totalDaysInMonth = new Date(yearNum, monthNum, 0).getDate();
-  const monthName = new Date(yearNum, monthNum - 1, 1).toLocaleString("en-US", { month: "short" });
-
-  const rhythmTrendMap = new Map<number, number>();
-  let dynamicTax = 0;
-  let dynamicServiceCharge = 0;
-
-  // Dynamic distribution maps
-  const categoryMap = new Map<string, number>();
-  const subcategoryMap = new Map<string, number>();
-
-  monthTransactions.forEach((t) => {
-    const isExpenseItem = t.type === "expense" || t.category !== "Salary";
-    if (isExpenseItem) {
-      // Category totals
-      categoryMap.set(t.category, (categoryMap.get(t.category) || 0) + t.amount);
-
-      // Subcategory / Description totals (Restricted strictly to Food & Dining, Shopping, and Entertainment)
-      if (
-        t.category === "Food & Dining" ||
-        t.category === "Shopping" ||
-        t.category === "Entertainment"
-      ) {
-        const subName = t.description || t.category;
-        subcategoryMap.set(subName, (subcategoryMap.get(subName) || 0) + t.amount);
-      }
-
-      // Accumulate tax and service charge from actual AI-scanned receipt records
-      if (t.tax) {
-        dynamicTax += t.tax;
-      }
-      if (t.serviceCharge) {
-        dynamicServiceCharge += t.serviceCharge;
-      }
-
-      const day = parseInt(t.date.slice(-2), 10);
-      if (!isNaN(day)) {
-        rhythmTrendMap.set(day, (rhythmTrendMap.get(day) || 0) + t.amount);
-      }
-    }
-  });
-
-  const rhythmTrendData = Array.from({ length: totalDaysInMonth }, (_, index) => {
-    const dayNum = index + 1;
-    return {
-      day: dayNum,
-      val: rhythmTrendMap.get(dayNum) || 0,
-    };
-  });
-
-  // Dynamic Pie Chart Data from actual Google Sheet categories
-  const pieData = Array.from(categoryMap.entries()).map(([name, value]) => ({
-    name,
-    value,
-  }));
-
-  // Dynamic Bar Chart Data from actual Google Sheet subcategories/items
-  const subcategoryData = Array.from(subcategoryMap.entries()).map(([name, amount], idx) => ({
-    name,
-    amount,
-    fill: BAR_COLORS[idx % BAR_COLORS.length],
-  }));
-
-  const firstDayStr = `${targetYearMonth}-01`;
-  const lastDayStr = `${targetYearMonth}-${String(totalDaysInMonth).padStart(2, "0")}`;
 
   return (
     <div>

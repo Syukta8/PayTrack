@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { describeDuplicate, findDuplicates } from "../model/duplicateGuard";
-import { PAYMENT_TYPES, normalizePaymentType } from "../model/types";
+import { PAYMENT_TYPES } from "../model/types";
 import type { ReceiptItem, Transaction } from "../model/types";
+import { buildExpensePrefill } from "../model/expensePrefill";
+import type { ExpensePrefillSource } from "../model/expensePrefill";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -18,18 +20,7 @@ interface AddExpenseModalProps {
     serviceCharge?: number;
     items?: ReceiptItem[];
   }) => void;
-  initialData?: {
-    amount?: number;
-    category?: string;
-    description?: string;
-    date?: string;
-    note?: string;
-    imageUrl?: string;
-    paymentMethod?: string;
-    tax?: number;
-    serviceCharge?: number;
-    items?: ReceiptItem[];
-  } | null;
+  initialData?: ExpensePrefillSource | null;
   /** Already-recorded transactions, used only to warn about a probable duplicate scan. */
   existingTransactions?: Transaction[];
 }
@@ -75,21 +66,17 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
   useEffect(() => {
     if (initialData) {
+      const prefill = buildExpensePrefill(initialData);
       setType("expense");
-      if (initialData.amount) setAmountStr(String(initialData.amount));
-      if (initialData.category) setSelectedCategory(initialData.category);
-      if (initialData.date) setDate(initialData.date);
-      if (initialData.description || initialData.note) {
-        setNote(initialData.description || initialData.note || "");
-      }
-      // A detected method must survive prefill: SPayLater drives the tenure fee, so losing
-      // it silently changes the amount that gets recorded.
-      const detectedPayment = normalizePaymentType(initialData.paymentMethod);
-      if (detectedPayment) setSelectedPayment(detectedPayment);
-      setImageUrl(initialData.imageUrl);
-      setItems(initialData.items);
-      setTax(initialData.tax ?? 0);
-      setServiceCharge(initialData.serviceCharge ?? 0);
+      if (prefill.amountStr !== undefined) setAmountStr(prefill.amountStr);
+      if (prefill.category) setSelectedCategory(prefill.category);
+      if (prefill.date) setDate(prefill.date);
+      if (prefill.note) setNote(prefill.note);
+      if (prefill.payment) setSelectedPayment(prefill.payment);
+      setImageUrl(prefill.imageUrl);
+      setItems(prefill.items);
+      setTax(prefill.tax);
+      setServiceCharge(prefill.serviceCharge);
     } else {
       setImageUrl(undefined);
       setItems(undefined);
