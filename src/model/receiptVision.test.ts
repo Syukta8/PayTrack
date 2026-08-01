@@ -38,4 +38,23 @@ describe("validateReceipt", () => {
     });
     expect(outcome).toEqual(expect.objectContaining({ ok: false, reason: expect.stringContaining("not valid JSON") }));
   });
+
+  it.each([
+    ["MAX_TOKENS", "too long"],
+    ["SAFETY", "stopped early"],
+  ])("explains terminal scanner finish state %s", async (finishReason, message) => {
+    const outcome = await scanReceipt({
+      apiKey: "test", base64Data: "image", mimeType: "image/jpeg",
+      fetchImpl: async () => new Response(JSON.stringify({ candidates: [{ content: { parts: [] }, finishReason }] })),
+    });
+    expect(outcome).toEqual(expect.objectContaining({ ok: false, reason: expect.stringContaining(message) }));
+  });
+
+  it("returns a useful refusal message without parsing untrusted content", async () => {
+    const outcome = await scanReceipt({
+      apiKey: "test", base64Data: "image", mimeType: "image/jpeg",
+      fetchImpl: async () => new Response(JSON.stringify({ promptFeedback: { blockReason: "SAFETY" } })),
+    });
+    expect(outcome).toEqual(expect.objectContaining({ ok: false, reason: expect.stringContaining("refused") }));
+  });
 });
