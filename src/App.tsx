@@ -14,12 +14,12 @@ import { MaintenanceView } from "./components/MaintenanceView";
 import { ScanReceiptModal } from "./components/ScanReceiptModal";
 import { PasteSmsModal } from "./components/PasteSmsModal";
 import { StatementReconciliationModal } from "./components/StatementReconciliationModal";
+import { SettingsView } from "./components/SettingsView";
+import type { ThemeMode } from "./components/SettingsView";
 import type { Transaction } from "./model/types";
 import { submitTransactionDraft } from "./model/transactionSubmission";
 import type { TransactionDraft } from "./model/transactionSubmission";
 import type { ExpensePrefillSource } from "./model/expensePrefill";
-
-type ThemeMode = "light" | "dark" | "system";
 
 export default function App() {
   const { user, loading: authLoading, sheetsAccessToken, configurationError, signIn, signOut } = useAuth();
@@ -279,48 +279,7 @@ export default function App() {
             )}
 
             {activeTab === "settings" && (
-              <main style={{ padding: "20px" }}>
-                <h2 style={{ fontSize: "1.3rem", fontWeight: 800, marginBottom: 16 }}>Settings</h2>
-
-                {/* Theme Mode Switch Card */}
-                <div className="section-card" style={{ margin: "0 0 16px" }}>
-                  <div style={{ fontSize: "0.9rem", fontWeight: 700, marginBottom: 12 }}>Appearance / Theme</div>
-                  <div className="segmented-tab-container" style={{ margin: 0 }}>
-                    <button
-                      className={`segmented-tab-btn ${themeMode === "light" ? "active" : ""}`}
-                      onClick={() => setThemeMode("light")}
-                    >
-                      Light
-                    </button>
-                    <button
-                      className={`segmented-tab-btn ${themeMode === "dark" ? "active" : ""}`}
-                      onClick={() => setThemeMode("dark")}
-                    >
-                      Dark
-                    </button>
-                    <button
-                      className={`segmented-tab-btn ${themeMode === "system" ? "active" : ""}`}
-                      onClick={() => setThemeMode("system")}
-                    >
-                      System
-                    </button>
-                  </div>
-                </div>
-
-                {/* Account Actions Card */}
-                <div className="section-card" style={{ margin: 0 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-                      Account: <strong>{user?.email || "Demo User"}</strong>
-                    </div>
-                    {!vm.isDemo && (
-                      <button className="primary-dark-btn" onClick={() => void signOut()}>
-                        Sign Out
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </main>
+              <SettingsView themeMode={themeMode} onThemeModeChange={setThemeMode} accountEmail={user?.email} isDemo={vm.isDemo} onSignOut={() => void signOut()} />
             )}
 
             <BottomNav
