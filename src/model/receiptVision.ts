@@ -1,4 +1,5 @@
 import { PAYMENT_TYPES, normalizePaymentType } from "./types";
+import { finiteReceiptNumber, isRealCalendarDate, localToday, parseReceiptItems } from "./receiptParsing";
 
 /** Vision-scanner domain module: prompt, transport, parsing and validation for receipt
  * extraction. Deliberately free of DOM and React so it can be exercised on its own. */
@@ -74,51 +75,6 @@ export type ScanOutcome = { ok: true; receipt: ScannedReceipt } | { ok: false; r
 export const QUALITY_MESSAGE =
   "Low Quality Image Guard: this photo is too blurry, dark, or cropped to read reliably. Retake it with the whole receipt in frame and good lighting — nothing has been saved.";
 
-/** Parses a currency-ish value, rejecting anything that is not genuinely numeric.
- * Stripping symbols is not enough: Number("") is 0, so a garbage string such as "NaN"
- * would otherwise be accepted as a real zero. */
-function finiteNumber(value: unknown): number | null {
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value !== "string") return null;
-  const cleaned = value.replace(/[^0-9.-]/g, "");
-  if (!/^-?\d+(\.\d+)?$/.test(cleaned)) return null;
-  const parsed = Number(cleaned);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function isRealCalendarDate(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
-}
-
-function localToday(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-/** Converts only complete, financially safe scanner line items into ledger-ready values. */
-function parseReceiptItems(value: unknown): ScannedItem[] {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((entry) => {
-    if (!entry || typeof entry !== "object") return [];
-    const item = entry as Record<string, unknown>;
-    const name = typeof item.name === "string" ? item.name.trim() : "";
-    const qty = finiteNumber(item.qty);
-    const unitPrice = finiteNumber(item.unitPrice);
-    const totalPrice = finiteNumber(item.totalPrice) ?? (qty !== null && unitPrice !== null ? qty * unitPrice : null);
-    if (!name || totalPrice === null || totalPrice < 0) return [];
-    return [{
-      name,
-      qty: qty !== null && qty > 0 ? qty : 1,
-      unitPrice: unitPrice !== null && unitPrice >= 0 ? unitPrice : totalPrice,
-      totalPrice,
-      category: typeof item.category === "string" && item.category.trim() ? item.category.trim() : undefined,
-    }];
-  });
-}
-
 /** The extraction instruction. Payment labels come from PAYMENT_TYPES so the model is asked
  * for the same vocabulary the picker and the sheet use. */
 export function buildPrompt(): string {
@@ -151,7 +107,7 @@ export function validateReceipt(raw: unknown): ScanOutcome {
 
   if (source.isQualityLow === true || source.isQualityLow === "true") return { ok: false, reason: QUALITY_MESSAGE };
 
-  const totalAmount = finiteNumber(source.totalAmount);
+  const totalAmount = finiteReceiptNumber(source.totalAmount);
   if (totalAmount === null || totalAmount <= 0) return { ok: false, reason: QUALITY_MESSAGE };
   if (totalAmount > AMOUNT_CEILING) {
     return { ok: false, reason: `The scanner read a total of RM${totalAmount.toFixed(2)}, which looks like a misread. Please retake the photo or enter this receipt manually.` };
@@ -178,8 +134,8 @@ export function validateReceipt(raw: unknown): ScanOutcome {
     receipt: {
       merchantName,
       totalAmount,
-      tax: finiteNumber(source.tax) ?? 0,
-      serviceCharge: finiteNumber(source.serviceCharge) ?? 0,
+      tax: finiteReceiptNumber(source.tax) ?? 0,
+      serviceCharge: finiteReceiptNumber(source.serviceCharge) ?? 0,
       date,
       category: typeof source.category === "string" && source.category.trim() ? source.category.trim() : "Shopping",
       note: typeof source.note === "string" && source.note.trim() ? source.note.trim() : merchantName,
