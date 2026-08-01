@@ -48,11 +48,18 @@ export function billStatus(bill: RecurringBill, now = new Date()): BillStatus {
 
 /** Applies the date/mileage "whichever comes first" rule to a maintenance item. */
 export function maintenanceStatus(item: MaintenanceItem, carInfo: CarInfo, now = new Date()): MaintenanceStatus {
-  const dueDate = item.intervalMonths > 0 && item.lastServiceDate ? new Date(new Date(item.lastServiceDate).getFullYear(), new Date(item.lastServiceDate).getMonth() + item.intervalMonths, new Date(item.lastServiceDate).getDate()) : null;
+  const dueDate = nextServiceDate(item);
   const daysUntilDue = dueDate ? Math.round((dueDate.getTime() - now.getTime()) / DAY_MS) : null;
   const nextDueMileage = item.intervalKm > 0 ? item.lastServiceMileage + item.intervalKm : null;
   const kmUntilDue = nextDueMileage === null ? null : nextDueMileage - carInfo.currentMileage;
   const overdue = (daysUntilDue !== null && daysUntilDue < 0) || (kmUntilDue !== null && kmUntilDue < 0);
   const dueSoon = (daysUntilDue !== null && daysUntilDue <= 7) || (kmUntilDue !== null && kmUntilDue <= 500);
   return { item, nextDueDate: dueDate ? localDateKey(dueDate) : null, daysUntilDue, nextDueMileage, kmUntilDue, status: overdue ? "overdue" : dueSoon ? "due_soon" : "upcoming" };
+}
+
+/** Returns the next calendar service date when the item has a date-based interval. */
+function nextServiceDate(item: MaintenanceItem): Date | null {
+  if (item.intervalMonths <= 0 || !item.lastServiceDate) return null;
+  const last = new Date(item.lastServiceDate);
+  return new Date(last.getFullYear(), last.getMonth() + item.intervalMonths, last.getDate());
 }

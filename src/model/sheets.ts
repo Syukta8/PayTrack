@@ -21,7 +21,8 @@ export function spreadsheetIdFrom(value: string): string {
   return id;
 }
 
-function coerce(value: unknown, type: CellType): string | number | boolean {
+/** Converts a raw Google Sheets cell into the scalar type declared by the schema. */
+export function coerceCellValue(value: unknown, type: CellType): string | number | boolean {
   if (value === undefined || value === "") return type === "number" ? 0 : type === "boolean" ? false : "";
   if (type === "number") return Number(value);
   if (type === "boolean") return value === true || value === "true" || value === "TRUE" || value === "1";
@@ -53,7 +54,7 @@ export class SheetsRepository implements SheetsStore {
     return (result.values ?? []).map((row, index) => {
       const data = {} as SheetRecord<K>;
       definition.columns.forEach(([key, type], columnIndex) => {
-        (data as unknown as Record<string, unknown>)[String(key)] = coerce(row[columnIndex], type);
+        (data as unknown as Record<string, unknown>)[String(key)] = coerceCellValue(row[columnIndex], type);
       });
       return { rowNumber: index + 2, data };
     }).filter((row) => Object.values(row.data).some((value) => value !== "" && value !== 0 && value !== false));
