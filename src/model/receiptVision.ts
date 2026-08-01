@@ -71,9 +71,35 @@ export interface ScannedReceipt {
 }
 
 export type ScanOutcome = { ok: true; receipt: ScannedReceipt } | { ok: false; reason: string };
+type ValidationResult<T> = { ok: true } & T | { ok: false; reason: string };
 
 export const QUALITY_MESSAGE =
   "Low Quality Image Guard: this photo is too blurry, dark, or cropped to read reliably. Retake it with the whole receipt in frame and good lighting — nothing has been saved.";
+
+/** Returns a trimmed scanner string only when it carries a meaningful value. */
+function optionalText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/** Keeps malformed dates editable while rejecting a clearly impossible future receipt. */
+function resolveReceiptDate(value: unknown): ValidationResult<{ date: string }> {
+  const rawDate = optionalText(value);
+  if (!rawDate || !isRealCalendarDate(rawDate)) return { ok: true, date: localToday() };
+  if (rawDate > localToday()) {
+    return { ok: false, reason: `The scanner read the receipt date as ${rawDate}, which is in the future. Please retake the photo or enter this receipt manually.` };
+  }
+  return { ok: true, date: rawDate };
+}
+
+/** Rejects unusable or implausibly large receipt totals before ledger fields are assembled. */
+function resolveReceiptTotal(value: unknown): ValidationResult<{ totalAmount: number }> {
+  const totalAmount = finiteReceiptNumber(value);
+  if (totalAmount === null || totalAmount <= 0) return { ok: false, reason: QUALITY_MESSAGE };
+  if (totalAmount > AMOUNT_CEILING) {
+    return { ok: false, reason: `The scanner read a total of RM${totalAmount.toFixed(2)}, which looks like a misread. Please retake the photo or enter this receipt manually.` };
+  }
+  return { ok: true, totalAmount };
+}
 
 /** The extraction instruction. Payment labels come from PAYMENT_TYPES so the model is asked
  * for the same vocabulary the picker and the sheet use. */
@@ -107,24 +133,11 @@ export function validateReceipt(raw: unknown): ScanOutcome {
 
   if (source.isQualityLow === true || source.isQualityLow === "true") return { ok: false, reason: QUALITY_MESSAGE };
 
-  const totalAmount = finiteReceiptNumber(source.totalAmount);
-  if (totalAmount === null || totalAmount <= 0) return { ok: false, reason: QUALITY_MESSAGE };
-  if (totalAmount > AMOUNT_CEILING) {
-    return { ok: false, reason: `The scanner read a total of RM${totalAmount.toFixed(2)}, which looks like a misread. Please retake the photo or enter this receipt manually.` };
-  }
-
-  // A future date always means a misread; an absent or malformed one falls back to today,
-  // which the user reviews in the editable form before saving.
-  const rawDate = typeof source.date === "string" ? source.date.trim() : "";
-  let date = localToday();
-  if (rawDate && isRealCalendarDate(rawDate)) {
-    if (rawDate > localToday()) {
-      return { ok: false, reason: `The scanner read the receipt date as ${rawDate}, which is in the future. Please retake the photo or enter this receipt manually.` };
-    }
-    date = rawDate;
-  }
-
-  const merchantName = typeof source.merchantName === "string" && source.merchantName.trim() ? source.merchantName.trim() : "";
+  const total = resolveReceiptTotal(source.totalAmount);
+  if (!total.ok) return total;
+  const receiptDate = resolveReceiptDate(source.date);
+  if (!receiptDate.ok) return receiptDate;
+  const merchantName = optionalText(source.merchantName) ?? "";
   if (!merchantName) return { ok: false, reason: QUALITY_MESSAGE };
 
   const items = parseReceiptItems(source.items);
@@ -133,12 +146,12 @@ export function validateReceipt(raw: unknown): ScanOutcome {
     ok: true,
     receipt: {
       merchantName,
-      totalAmount,
+      totalAmount: total.totalAmount,
       tax: finiteReceiptNumber(source.tax) ?? 0,
       serviceCharge: finiteReceiptNumber(source.serviceCharge) ?? 0,
-      date,
-      category: typeof source.category === "string" && source.category.trim() ? source.category.trim() : "Shopping",
-      note: typeof source.note === "string" && source.note.trim() ? source.note.trim() : merchantName,
+      date: receiptDate.date,
+      category: optionalText(source.category) ?? "Shopping",
+      note: optionalText(source.note) ?? merchantName,
       paymentMethod: normalizePaymentType(typeof source.paymentMethod === "string" ? source.paymentMethod : null) ?? undefined,
       items,
     },
