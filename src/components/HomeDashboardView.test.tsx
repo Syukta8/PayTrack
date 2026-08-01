@@ -50,4 +50,18 @@ describe("HomeDashboardView", () => {
     fireEvent.click(screen.getByText("Overview"));
     expect(screen.getByText("No expense subcategory data recorded.")).toBeTruthy();
   });
+
+  it("updates totals and receipt rows when the selected month changes", () => {
+    render(<HomeDashboardView onSelectReceipt={vi.fn()} transactions={[
+      { id: "aug-income", date: "2026-08-01", type: "income", category: "Salary", amount: 100, description: "Salary", paymentType: "Online banking", remarks: "", createdAt: "" },
+      { id: "aug-expense", date: "2026-08-02", type: "expense", category: "Food & Dining", amount: 25, description: "August lunch", paymentType: "Cash", remarks: "", createdAt: "", tax: 2, serviceCharge: 1 },
+      { id: "jul-expense", date: "2026-07-03", type: "expense", category: "Food & Dining", amount: 10, description: "July lunch", paymentType: "Cash", remarks: "", createdAt: "" },
+    ]} />);
+
+    expect(screen.getByText("RM75.00")).toBeTruthy();
+    expect(screen.getAllByText("Tax: RM2.00")).toHaveLength(2);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "2026-07" } });
+    expect(screen.getByText("July lunch")).toBeTruthy();
+    expect(screen.queryByText("August lunch")).toBeNull();
+  });
 });
