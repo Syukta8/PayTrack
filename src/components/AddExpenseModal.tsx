@@ -5,6 +5,7 @@ import type { ReceiptItem, Transaction } from "../model/types";
 import { buildExpensePrefill } from "../model/expensePrefill";
 import type { ExpensePrefillSource } from "../model/expensePrefill";
 import type { TransactionDraft } from "../model/transactionSubmission";
+import { summarizeExpenseAmount } from "../model/expenseAmounts";
 
 interface AddExpenseModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ const INCOME_CATEGORIES = [
 
 const PAYMENT_METHODS = PAYMENT_TYPES;
 
+/** Collects a reviewed income or expense draft before it reaches the ledger. */
 export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   isOpen,
   onClose,
@@ -77,9 +79,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
   const activeCategories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
-  const rawAmount = parseFloat(amountStr) || 0;
-  const spayFeeRate = selectedPayment === "SPayLater" && spayTenure > 1 ? 0.015 * spayTenure : 0;
-  const effectiveAmount = selectedPayment === "SPayLater" ? rawAmount * (1 + spayFeeRate) : rawAmount;
+  const amountSummary = summarizeExpenseAmount(amountStr, selectedPayment, spayTenure);
+  const { rawAmount, feeRate: spayFeeRate, effectiveAmount } = amountSummary;
 
   /** Compared against the amount that would actually be written, so an SPayLater entry is
    * matched on its fee-inclusive total rather than the pre-fee figure. */
@@ -205,8 +206,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
         {(() => {
           if (!items || items.length === 0) return null;
           const itemsSum = items.reduce((sum, item) => sum + item.totalPrice, 0);
-          const currentAmount = parseFloat(amountStr) || 0;
-          const feeRate = selectedPayment === "SPayLater" && spayTenure > 1 ? 0.015 * spayTenure : 0;
+          const currentAmount = rawAmount;
+          const feeRate = spayFeeRate;
           const expectedTotal = itemsSum * (1 + feeRate);
           const hasMismatch = Math.abs(expectedTotal - currentAmount) > 0.10 && Math.abs(itemsSum - currentAmount) > 0.10;
 

@@ -12,4 +12,14 @@ describe("AddExpenseModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ amount: 12.5, paymentMethod: "QR code", tax: 0.75, serviceCharge: 1.25, items: [{ id: "tea", name: "Tea", qty: 1, unitPrice: 2, totalPrice: 2 }] }));
   });
+
+  it("submits the fee-inclusive total for a multi-month SPayLater expense", () => {
+    const onSubmit = vi.fn();
+    render(<AddExpenseModal isOpen onClose={vi.fn()} onSubmit={onSubmit} />);
+    fireEvent.change(screen.getByPlaceholderText("0.00"), { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("button", { name: "SPayLater" }));
+    fireEvent.click(screen.getByRole("button", { name: /6 months/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ amount: 109.00000000000001, paymentMethod: "SPayLater 6M" }));
+  });
 });
