@@ -1,25 +1,31 @@
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { useAuth } from "./model/AuthContext";
 import { useTrackerViewModel } from "./viewModels/useTrackerViewModel";
 
 import { BottomNav } from "./components/BottomNav";
 import type { NavTab } from "./components/BottomNav";
-import { HomeDashboardView } from "./components/HomeDashboardView";
 import { ReceiptDetailsView } from "./components/ReceiptDetailsView";
-import { AddExpenseModal } from "./components/AddExpenseModal";
-import { QuickActionsModal } from "./components/QuickActionsModal";
-import { BillsView } from "./components/BillsView";
-import { MaintenanceView } from "./components/MaintenanceView";
-import { ScanReceiptModal } from "./components/ScanReceiptModal";
-import { PasteSmsModal } from "./components/PasteSmsModal";
-import { StatementReconciliationModal } from "./components/StatementReconciliationModal";
-import { SettingsView } from "./components/SettingsView";
 import type { ThemeMode } from "./components/SettingsView";
 import type { Transaction } from "./model/types";
 import type { TransactionDraft } from "./model/transactionSubmission";
 import type { ExpensePrefillSource } from "./model/expensePrefill";
 import { useTrackerCommands } from "./viewModels/useTrackerCommands";
+
+const AddExpenseModal = lazy(() => import("./components/AddExpenseModal").then(({ AddExpenseModal: Component }) => ({ default: Component })));
+const HomeDashboardView = lazy(() => import("./components/HomeDashboardView").then(({ HomeDashboardView: Component }) => ({ default: Component })));
+const QuickActionsModal = lazy(() => import("./components/QuickActionsModal").then(({ QuickActionsModal: Component }) => ({ default: Component })));
+const BillsView = lazy(() => import("./components/BillsView").then(({ BillsView: Component }) => ({ default: Component })));
+const MaintenanceView = lazy(() => import("./components/MaintenanceView").then(({ MaintenanceView: Component }) => ({ default: Component })));
+const ScanReceiptModal = lazy(() => import("./components/ScanReceiptModal").then(({ ScanReceiptModal: Component }) => ({ default: Component })));
+const PasteSmsModal = lazy(() => import("./components/PasteSmsModal").then(({ PasteSmsModal: Component }) => ({ default: Component })));
+const StatementReconciliationModal = lazy(() => import("./components/StatementReconciliationModal").then(({ StatementReconciliationModal: Component }) => ({ default: Component })));
+const SettingsView = lazy(() => import("./components/SettingsView").then(({ SettingsView: Component }) => ({ default: Component })));
+
+/** Keeps deferred secondary screens responsive while their code loads. */
+function DeferredViewFallback() {
+  return <div role="status" style={{ padding: 24, textAlign: "center", color: "var(--text-muted)" }}>Loading view…</div>;
+}
 
 export default function App() {
   const { user, loading: authLoading, sheetsAccessToken, configurationError, signIn, signOut } = useAuth();
@@ -201,7 +207,7 @@ export default function App() {
             onBack={() => setSelectedReceipt(null)}
           />
         ) : (
-          <>
+          <Suspense fallback={<DeferredViewFallback />}>
             {activeTab === "home" && (
               <HomeDashboardView
                 transactions={transactions}
@@ -303,7 +309,7 @@ export default function App() {
               initialData={scannedData}
               existingTransactions={transactions}
             />
-          </>
+          </Suspense>
         )}
       </div>
     </div>
