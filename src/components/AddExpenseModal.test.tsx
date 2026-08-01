@@ -22,4 +22,11 @@ describe("AddExpenseModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ amount: 109.00000000000001, paymentMethod: "SPayLater 6M" }));
   });
+
+  it("warns about duplicates and lets the user sync a mismatched receipt total", () => {
+    render(<AddExpenseModal isOpen onClose={vi.fn()} onSubmit={vi.fn()} existingTransactions={[{ id: "existing", date: "2026-08-01", type: "expense", category: "Food & Dining", amount: 8, description: "Lunch", paymentType: "Cash", remarks: "", createdAt: "" }]} initialData={{ amount: 8, category: "Food & Dining", description: "Lunch", date: "2026-08-01", paymentMethod: "Cash", items: [{ id: "item", name: "Rice", qty: 1, unitPrice: 5, totalPrice: 5 }] }} />);
+    expect(screen.getByText(/possible duplicate/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /sync base amount/i }));
+    expect((screen.getByPlaceholderText("0.00") as HTMLInputElement).value).toBe("5.00");
+  });
 });
