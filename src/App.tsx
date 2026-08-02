@@ -233,6 +233,7 @@ export default function App() {
             {activeTab === "maintenance" && (
               <MaintenanceView
                 maintenance={maintenance}
+                bills={bills}
                 carInfo={carInfo}
                 onSetMileage={commands.setMileage}
                 onAddMaintenance={commands.addMaintenance}

@@ -1,8 +1,10 @@
 import React, { useState } from "react";
-import type { CarInfo, MaintenanceStatus } from "../model/types";
+import type { BillStatus, CarInfo, MaintenanceStatus } from "../model/types";
+import { calendarEventsInRange } from "../model/calendarEvents";
 
 interface MaintenanceViewProps {
   maintenance: MaintenanceStatus[];
+  bills: BillStatus[];
   carInfo: CarInfo;
   onSetMileage: (mileage: number) => Promise<void>;
   onAddMaintenance: (item: {
@@ -17,6 +19,7 @@ interface MaintenanceViewProps {
 
 export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   maintenance,
+  bills,
   carInfo,
   onSetMileage,
   onAddMaintenance,
@@ -74,6 +77,12 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   // Calendar Grid Generation
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
   const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
+  const monthStart = new Date(currentYear, currentMonth, 1);
+  const monthEnd = new Date(currentYear, currentMonth + 1, 0);
+  const calendarEvents = calendarEventsInRange(bills, maintenance, monthStart, monthEnd);
+  const eventsByDate = new Map<string, typeof calendarEvents>();
+  calendarEvents.forEach((event) => eventsByDate.set(event.date, [...(eventsByDate.get(event.date) ?? []), event]));
+  const selectedEvents = eventsByDate.get(selectedCalendarDate) ?? [];
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -85,7 +94,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
       {/* Header & Odometer */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px 12px" }}>
         <div>
-          <h2 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Maintenance</h2>
+          <h2 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Calendar</h2>
           <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
             Odometer: <strong>{carInfo.currentMileage.toLocaleString()} km</strong>
           </div>
@@ -177,14 +186,20 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                   color: isSelected ? "#ffffff" : isToday ? "var(--accent-blue)" : "var(--text-main)",
                 }}
               >
-                {dayNum}
+                <span>{dayNum}</span>
+                {eventsByDate.has(dateStr) && <span aria-label={`${eventsByDate.get(dateStr)?.length} scheduled items`} style={{ display: "block", fontSize: "0.55rem", color: isSelected ? "#bfdbfe" : "#2563eb", marginTop: 2 }}>●</span>}
               </button>
             );
           })}
         </div>
 
         <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border-subtle)", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-          Selected Date: <strong>{selectedCalendarDate}</strong>
+          <div>Selected Date: <strong>{selectedCalendarDate}</strong></div>
+          {selectedEvents.length > 0 ? selectedEvents.map((event) => (
+            <div key={event.id} style={{ marginTop: 6, color: event.kind === "bill" ? "#7c3aed" : "#0f766e" }}>
+              {event.kind === "bill" ? "Bill due" : "Maintenance due"}: <strong>{event.title}</strong>
+            </div>
+          )) : <div style={{ marginTop: 6 }}>No scheduled bills or maintenance on this date.</div>}
         </div>
       </div>
 
