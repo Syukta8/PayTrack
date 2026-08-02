@@ -1,14 +1,15 @@
 import type { Transaction } from "./types";
+import { trackingCycleForDate } from "./trackingCycle";
 
 const BAR_COLORS = ["#a855f7", "#f97316", "#ec4899", "#06b6d4", "#78350f", "#3b82f6", "#10b981"];
 const RECEIPT_CATEGORIES = new Set(["Food & Dining", "Shopping", "Entertainment"]);
 
 /** Builds the dashboard's month-level financial metrics from persisted transactions.
  * Keeping these calculations outside the view makes the totals independently testable. */
-export function buildDashboardMetrics(transactions: Transaction[], yearMonth: string) {
-  const monthTransactions = transactions.filter((transaction) => transaction.date.startsWith(yearMonth));
-  const [year, month] = yearMonth.split("-").map(Number);
-  const daysInMonth = new Date(year, month, 0).getDate();
+export function buildDashboardMetrics(transactions: Transaction[], cycleStart: string, cycleStartDay = 1) {
+  const { start: firstDay, end: lastDay } = trackingCycleForDate(cycleStart, cycleStartDay);
+  const monthTransactions = transactions.filter((transaction) => transaction.date >= firstDay && transaction.date <= lastDay);
+  const daysInCycle = Math.round((new Date(`${lastDay}T00:00:00`).getTime() - new Date(`${firstDay}T00:00:00`).getTime()) / 86_400_000) + 1;
   const categoryTotals = new Map<string, number>();
   const subcategoryTotals = new Map<string, number>();
   const dailyTotals = new Map<number, number>();
@@ -32,8 +33,8 @@ export function buildDashboardMetrics(transactions: Transaction[], yearMonth: st
     }
     tax += transaction.tax ?? 0;
     serviceCharge += transaction.serviceCharge ?? 0;
-    const day = Number(transaction.date.slice(-2));
-    if (Number.isInteger(day) && day >= 1 && day <= daysInMonth) {
+    const day = Math.round((new Date(`${transaction.date}T00:00:00`).getTime() - new Date(`${firstDay}T00:00:00`).getTime()) / 86_400_000) + 1;
+    if (Number.isInteger(day) && day >= 1 && day <= daysInCycle) {
       dailyTotals.set(day, (dailyTotals.get(day) ?? 0) + transaction.amount);
     }
   });
@@ -45,9 +46,9 @@ export function buildDashboardMetrics(transactions: Transaction[], yearMonth: st
     balance: income - expense,
     tax,
     serviceCharge,
-    firstDay: `${yearMonth}-01`,
-    lastDay: `${yearMonth}-${String(daysInMonth).padStart(2, "0")}`,
-    rhythmTrendData: Array.from({ length: daysInMonth }, (_, index) => ({ day: index + 1, val: dailyTotals.get(index + 1) ?? 0 })),
+    firstDay,
+    lastDay,
+    rhythmTrendData: Array.from({ length: daysInCycle }, (_, index) => ({ day: index + 1, val: dailyTotals.get(index + 1) ?? 0 })),
     pieData: Array.from(categoryTotals, ([name, value]) => ({ name, value })),
     subcategoryData: Array.from(subcategoryTotals, ([name, amount], index) => ({ name, amount, fill: BAR_COLORS[index % BAR_COLORS.length] })),
   };

@@ -39,6 +39,7 @@ export function useTrackerCommands(
   const deleteBill = useCallback((billId: string) => run((activeTracker) => activeTracker.deleteBill(billId)), [run]);
   const updateTransaction = useCallback((transactionId: string, input: Partial<Omit<Transaction, "id" | "createdAt">>) => run((activeTracker) => activeTracker.updateTransaction(transactionId, input)), [run]);
   const setMileage = useCallback((mileage: number) => run((activeTracker) => activeTracker.setMileage(mileage)), [run]);
+  const setTrackingCycleStartDay = useCallback((day: number) => run((activeTracker) => activeTracker.setTrackingCycleStartDay(day)), [run]);
   const addMaintenance = useCallback((input: Omit<MaintenanceItem, "id" | "active" | "lastServiceMileage">) => run((activeTracker) => activeTracker.addMaintenance(input)), [run]);
   const markMaintenanceDone = useCallback((itemId: string, cost?: number) => run((activeTracker) => activeTracker.markMaintenanceDone(itemId, { cost })), [run]);
   const importReconciledItems = useCallback((items: ReconciledStatementItem[]) => run(async (activeTracker) => {
@@ -55,5 +56,5 @@ export function useTrackerCommands(
     }
   }), [run]);
 
-  return { submitTransaction, deleteTransaction, markBillPaid, addBill, updateBill, deleteBill, updateTransaction, setMileage, addMaintenance, markMaintenanceDone, importReconciledItems };
+  return { submitTransaction, deleteTransaction, markBillPaid, addBill, updateBill, deleteBill, updateTransaction, setMileage, setTrackingCycleStartDay, addMaintenance, markMaintenanceDone, importReconciledItems };
 }

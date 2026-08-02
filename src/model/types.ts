@@ -87,6 +87,8 @@ export interface RecurringBill {
 export interface Budget { id: string; category: string; monthlyLimit: number; }
 export interface Category { id: string; name: string; type: TransactionType; }
 export interface CarInfo { id: string; currentMileage: number; updatedAt: string; }
+/** Account-level preferences shared across the user's connected devices. */
+export interface AppSettings { id: string; trackingCycleStartDay: number; }
 export interface ServiceRecord { id: string; date: string; mileage: number; description: string; createdAt: string; }
 
 export interface MaintenanceItem {

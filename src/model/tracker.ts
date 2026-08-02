@@ -1,6 +1,7 @@
 import { billStatus, maintenanceStatus, periodKey } from "./domain";
+import { normalizeCycleStartDay } from "./trackingCycle";
 import type { SheetsStore, RowRecord } from "./sheets";
-import type { BillStatus, CarInfo, DashboardSummary, MaintenanceItem, MaintenanceStatus, ReceiptItem, ReceiptItemRecord, RecurringBill, ServiceRecord, Transaction } from "./types";
+import type { AppSettings, BillStatus, CarInfo, DashboardSummary, MaintenanceItem, MaintenanceStatus, ReceiptItem, ReceiptItemRecord, RecurringBill, ServiceRecord, Transaction } from "./types";
 
 const today = (): string => new Date().toISOString().slice(0, 10);
 const id = (): string => crypto.randomUUID();
@@ -14,6 +15,7 @@ export interface TrackerData {
   bills: BillStatus[];
   maintenance: MaintenanceStatus[];
   carInfo: CarInfo;
+  settings: AppSettings;
   serviceHistory: ServiceRecord[];
   dashboard: DashboardSummary;
 }
@@ -24,8 +26,8 @@ export class Tracker {
 
   /** Loads every screen's read model in parallel. */
   public async load(): Promise<TrackerData> {
-    const [transactionRows, billRows, maintenanceRows, carRows, serviceRows, itemRows] = await Promise.all([
-      this.sheets.list("transactions"), this.sheets.list("bills"), this.sheets.list("maintenance"), this.sheets.list("carInfo"), this.sheets.list("serviceHistory"), this.sheets.list("receiptItems"),
+    const [transactionRows, billRows, maintenanceRows, carRows, serviceRows, itemRows, settingsRows] = await Promise.all([
+      this.sheets.list("transactions"), this.sheets.list("bills"), this.sheets.list("maintenance"), this.sheets.list("carInfo"), this.sheets.list("serviceHistory"), this.sheets.list("receiptItems"), this.sheets.list("appSettings"),
     ]);
     const itemsByTransaction = new Map<string, ReceiptItem[]>();
     itemRows.forEach(({ data }) => {
@@ -41,7 +43,9 @@ export class Tracker {
     const bills = billRows.map((row) => billStatus(row.data)).sort((a, b) => a.daysUntilDue - b.daysUntilDue);
     const maintenance = maintenanceRows.map((row) => maintenanceStatus(row.data, carInfo));
     const serviceHistory = serviceRows.map((row) => row.data).sort((a, b) => b.mileage - a.mileage);
-    return { transactions, bills, maintenance, carInfo, serviceHistory, dashboard: dashboard(transactions, bills) };
+    const savedSettings = settingsRows[0]?.data ?? { id: "", trackingCycleStartDay: 1 };
+    const settings = { ...savedSettings, trackingCycleStartDay: normalizeCycleStartDay(savedSettings.trackingCycleStartDay) };
+    return { transactions, bills, maintenance, carInfo, settings, serviceHistory, dashboard: dashboard(transactions, bills) };
   }
 
   /** Adds a ledger transaction. */
@@ -108,6 +112,8 @@ export class Tracker {
   public async deleteBill(billId: string): Promise<void> { await this.deleteById("bills", billId); }
   /** Updates the singleton current-mileage record. */
   public async setMileage(currentMileage: number): Promise<void> { requireNonNegative(currentMileage, "Current mileage"); const row = (await this.sheets.list("carInfo"))[0]; const data: CarInfo = { id: row?.data.id || id(), currentMileage, updatedAt: new Date().toISOString() }; if (row) await this.sheets.update("carInfo", row.rowNumber, data); else await this.sheets.append("carInfo", data); }
+  /** Saves the salary-aligned day on which each dashboard reporting cycle begins. */
+  public async setTrackingCycleStartDay(trackingCycleStartDay: number): Promise<void> { const day = normalizeCycleStartDay(trackingCycleStartDay); if (day !== trackingCycleStartDay) throw new Error("Tracking-cycle start day must be between 1 and 31."); const row = (await this.sheets.list("appSettings"))[0]; const data: AppSettings = { id: row?.data.id || id(), trackingCycleStartDay: day }; if (row) await this.sheets.update("appSettings", row.rowNumber, data); else await this.sheets.append("appSettings", data); }
   /** Adds a maintenance item based on the current odometer baseline. */
   public async addMaintenance(input: Omit<MaintenanceItem, "id" | "active" | "lastServiceMileage">): Promise<void> { requireText(input.name, "Maintenance name"); requireDate(input.lastServiceDate, "Last-service date"); requireNonNegative(input.intervalMonths, "Month interval"); requireNonNegative(input.intervalKm, "Kilometre interval"); if (input.intervalMonths === 0 && input.intervalKm === 0) throw new Error("Set a month or kilometre interval."); const car = (await this.sheets.list("carInfo"))[0]?.data.currentMileage ?? 0; await this.sheets.append("maintenance", { ...input, name: input.name.trim(), id: id(), active: true, lastServiceMileage: car }); }
   /** Moves the maintenance baseline and optionally logs its cost as an expense. */

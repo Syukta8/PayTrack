@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
 import type { Transaction } from "../model/types";
 import { buildDashboardMetrics } from "../model/dashboardMetrics";
+import { trackingCycleForDate, trackingCycleKey } from "../model/trackingCycle";
 
 interface HomeDashboardViewProps {
   transactions: Transaction[];
+  trackingCycleStartDay?: number;
   onSelectReceipt: (receipt: Transaction) => void;
   onDeleteTransaction?: (transactionId: string) => Promise<void>;
 }
@@ -13,30 +15,32 @@ const CATEGORY_COLORS = ["#3b82f6", "#2563eb", "#8b5cf6", "#f97316", "#ec4899", 
 
 export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
   transactions,
+  trackingCycleStartDay = 1,
   onSelectReceipt,
   onDeleteTransaction,
 }) => {
   const [activeSegment, setActiveSegment] = useState<"details" | "overview">("details");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Extract unique available months from transaction history (e.g., ["2026-07", "2026-04"])
-  const availableMonths = Array.from(
-    new Set(transactions.map((t) => t.date.slice(0, 7)).filter(Boolean))
+  const availableCycles = Array.from(
+    new Set(transactions.map((transaction) => trackingCycleKey(transaction.date, trackingCycleStartDay)))
   ).sort().reverse();
 
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    return availableMonths[0] || new Date().toISOString().slice(0, 7);
+  const [selectedCycle, setSelectedCycle] = useState<string>(() => {
+    return availableCycles[0] || trackingCycleKey(new Date().toISOString().slice(0, 10), trackingCycleStartDay);
   });
 
-  const targetYearMonth = availableMonths.includes(selectedMonth)
-    ? selectedMonth
-    : availableMonths[0] || new Date().toISOString().slice(0, 7);
+  const targetCycle = availableCycles.includes(selectedCycle)
+    ? selectedCycle
+    : availableCycles[0] || trackingCycleKey(new Date().toISOString().slice(0, 10), trackingCycleStartDay);
 
-  const metrics = buildDashboardMetrics(transactions, targetYearMonth);
+  const metrics = buildDashboardMetrics(transactions, targetCycle, trackingCycleStartDay);
   const { monthTransactions, expense: totalExpense, balance: remainingBalance, tax: dynamicTax, serviceCharge: dynamicServiceCharge, rhythmTrendData, pieData, subcategoryData, firstDay: firstDayStr, lastDay: lastDayStr } = metrics;
-  const [yearStr, monthStr] = targetYearMonth.split("-");
-  const yearNum = Number(yearStr);
-  const monthName = new Date(yearNum, Number(monthStr) - 1, 1).toLocaleString("en-US", { month: "short" });
+  const cycleLabel = (cycleStart: string) => {
+    const { start, end } = trackingCycleForDate(cycleStart, trackingCycleStartDay);
+    const format = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+    return `${format(start)} – ${format(end)}`;
+  };
 
   const filteredTransactions = monthTransactions.filter((t) =>
     (t.description || t.category).toLowerCase().includes(searchQuery.toLowerCase())
@@ -49,8 +53,8 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
       <div className="hero-gradient-header">
         <div style={{ position: "relative", display: "inline-block", marginBottom: 16 }}>
           <select
-            value={targetYearMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+            value={targetCycle}
+            onChange={(e) => setSelectedCycle(e.target.value)}
             style={{
               appearance: "none",
               background: "#ffffff",
@@ -64,12 +68,10 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
               cursor: "pointer",
             }}
           >
-            {availableMonths.map((m) => {
-              const [y, mNum] = m.split("-");
-              const mName = new Date(parseInt(y, 10), parseInt(mNum, 10) - 1, 1).toLocaleString("en-US", { month: "short" });
+            {availableCycles.map((cycleStart) => {
               return (
-                <option key={m} value={m}>
-                  {mName} {y}
+                <option key={cycleStart} value={cycleStart}>
+                  {cycleLabel(cycleStart)}
                 </option>
               );
             })}
@@ -136,7 +138,7 @@ export const HomeDashboardView: React.FC<HomeDashboardViewProps> = ({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                         }}
                       >
-                        <div style={{ color: "#94a3b8", fontWeight: 600 }}>Day {dataPoint.day} {monthName} {yearNum}</div>
+                        <div style={{ color: "#94a3b8", fontWeight: 600 }}>Day {dataPoint.day} of this cycle</div>
                         <div style={{ fontWeight: 800, fontSize: "0.88rem" }}>
                           RM{Number(dataPoint.val).toFixed(2)}
                         </div>

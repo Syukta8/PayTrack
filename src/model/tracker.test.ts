@@ -7,7 +7,7 @@ type Rows = { [K in SheetEntity]: RowRecord<SheetRecord<K>>[] };
 
 function createSheets(rows: Partial<Rows> = {}) {
   const allRows: Rows = {
-    transactions: [], bills: [], maintenance: [], carInfo: [], serviceHistory: [], receiptItems: [],
+    transactions: [], bills: [], maintenance: [], carInfo: [], serviceHistory: [], receiptItems: [], appSettings: [],
     ...rows,
   } as Rows;
   return {
@@ -72,6 +72,12 @@ describe("Tracker", () => {
     const empty = createSheets();
     await new Tracker(empty).setMileage(1200);
     expect(empty.append).toHaveBeenCalledWith("carInfo", expect.objectContaining({ currentMileage: 1200 }));
+  });
+
+  it("stores the tracking-cycle setting in the shared settings tab", async () => {
+    const sheets = createSheets();
+    await new Tracker(sheets).setTrackingCycleStartDay(25);
+    expect(sheets.append).toHaveBeenCalledWith("appSettings", expect.objectContaining({ trackingCycleStartDay: 25 }));
   });
 
   it("rejects invalid transactions before they reach the repository", async () => {

@@ -211,6 +211,7 @@ export default function App() {
             {activeTab === "home" && (
               <HomeDashboardView
                 transactions={transactions}
+                trackingCycleStartDay={vm.data?.settings.trackingCycleStartDay ?? 1}
                 onSelectReceipt={setSelectedReceipt}
                 onDeleteTransaction={commands.deleteTransaction}
               />
@@ -240,7 +241,7 @@ export default function App() {
             )}
 
             {activeTab === "settings" && (
-              <SettingsView themeMode={themeMode} onThemeModeChange={setThemeMode} accountEmail={user?.email} isDemo={vm.isDemo} onSignOut={() => void signOut()} />
+              <SettingsView themeMode={themeMode} onThemeModeChange={setThemeMode} trackingCycleStartDay={vm.data?.settings.trackingCycleStartDay ?? 1} onTrackingCycleStartDayChange={commands.setTrackingCycleStartDay} accountEmail={user?.email} isDemo={vm.isDemo} onSignOut={() => void signOut()} />
             )}
 
             <BottomNav
