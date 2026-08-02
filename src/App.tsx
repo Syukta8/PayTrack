@@ -11,6 +11,7 @@ import type { Transaction } from "./model/types";
 import type { TransactionDraft } from "./model/transactionSubmission";
 import type { ExpensePrefillSource } from "./model/expensePrefill";
 import { useTrackerCommands } from "./viewModels/useTrackerCommands";
+import { MaintenanceServiceModal, OdometerModal } from "./components/VehicleQuickActionModals";
 
 const AddExpenseModal = lazy(() => import("./components/AddExpenseModal").then(({ AddExpenseModal: Component }) => ({ default: Component })));
 const HomeDashboardView = lazy(() => import("./components/HomeDashboardView").then(({ HomeDashboardView: Component }) => ({ default: Component })));
@@ -39,6 +40,8 @@ export default function App() {
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [isPasteSmsOpen, setIsPasteSmsOpen] = useState(false);
   const [isStatementOpen, setIsStatementOpen] = useState(false);
+  const [isMaintenanceServiceOpen, setIsMaintenanceServiceOpen] = useState(false);
+  const [isOdometerOpen, setIsOdometerOpen] = useState(false);
   const [scannedData, setScannedData] = useState<ExpensePrefillSource | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     return (localStorage.getItem("paytrack.theme") as ThemeMode) || "system";
@@ -234,8 +237,6 @@ export default function App() {
               <MaintenanceView
                 maintenance={maintenance}
                 bills={bills}
-                carInfo={carInfo}
-                onSetMileage={commands.setMileage}
                 onAddMaintenance={commands.addMaintenance}
                 onMarkDone={commands.markMaintenanceDone}
               />
@@ -255,13 +256,30 @@ export default function App() {
             <QuickActionsModal
               isOpen={isQuickActionsOpen}
               onClose={() => setIsQuickActionsOpen(false)}
-              onOpenAddTransaction={() => {
+                onOpenAddTransaction={() => {
                 setScannedData(null);
                 setIsAddModalOpen(true);
-              }}
+                }}
+              onOpenMaintenanceService={() => setIsMaintenanceServiceOpen(true)}
+              onOpenOdometer={() => setIsOdometerOpen(true)}
               onOpenScanReceipt={() => setIsScanModalOpen(true)}
               onOpenPasteSms={() => setIsPasteSmsOpen(true)}
               onOpenStatementReconcile={() => setIsStatementOpen(true)}
+            />
+
+            <MaintenanceServiceModal
+              isOpen={isMaintenanceServiceOpen}
+              maintenance={maintenance}
+              carInfo={carInfo}
+              onClose={() => setIsMaintenanceServiceOpen(false)}
+              onSave={commands.markMaintenanceDone}
+            />
+
+            <OdometerModal
+              isOpen={isOdometerOpen}
+              currentMileage={carInfo.currentMileage}
+              onClose={() => setIsOdometerOpen(false)}
+              onSave={commands.setMileage}
             />
 
             {/* AI Receipt Scanner Modal */}

@@ -1,12 +1,10 @@
 import React, { useState } from "react";
-import type { BillStatus, CarInfo, MaintenanceStatus } from "../model/types";
+import type { BillStatus, MaintenanceStatus } from "../model/types";
 import { calendarEventsInRange } from "../model/calendarEvents";
 
 interface MaintenanceViewProps {
   maintenance: MaintenanceStatus[];
   bills: BillStatus[];
-  carInfo: CarInfo;
-  onSetMileage: (mileage: number) => Promise<void>;
   onAddMaintenance: (item: {
     name: string;
     notes: string;
@@ -14,20 +12,16 @@ interface MaintenanceViewProps {
     intervalKm: number;
     lastServiceDate: string;
   }) => Promise<void>;
-  onMarkDone: (itemId: string, cost?: number) => Promise<void>;
+  onMarkDone: (itemId: string, input?: { cost?: number }) => Promise<void>;
 }
 
 export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   maintenance,
   bills,
-  carInfo,
-  onSetMileage,
   onAddMaintenance,
   onMarkDone,
 }) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isMileageOpen, setIsMileageOpen] = useState(false);
-  const [newMileageStr, setNewMileageStr] = useState(String(carInfo.currentMileage || ""));
 
   // Form states
   const [name, setName] = useState("");
@@ -46,12 +40,6 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     today.toISOString().split("T")[0]
   );
 
-  const handleSaveMileage = async () => {
-    const km = parseInt(newMileageStr, 10) || 0;
-    await onSetMileage(km);
-    setIsMileageOpen(false);
-  };
-
   const handleSaveMaintenance = async () => {
     if (!name.trim()) return;
     await onAddMaintenance({
@@ -69,7 +57,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   const handleCompleteService = async () => {
     if (!selectedItemId) return;
     const cost = parseFloat(serviceCostStr) || 0;
-    await onMarkDone(selectedItemId, cost);
+    await onMarkDone(selectedItemId, { cost });
     setSelectedItemId(null);
     setServiceCostStr("");
   };
@@ -91,25 +79,12 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
 
   return (
     <div style={{ padding: "0 0 20px" }}>
-      {/* Header & Odometer */}
+      {/* Calendar controls and maintenance-plan entry stay here; real-time vehicle updates live in Quick Actions. */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px 12px" }}>
         <div>
           <h2 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Calendar</h2>
-          <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-            Odometer: <strong>{carInfo.currentMileage.toLocaleString()} km</strong>
-          </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
-            className="pill-btn active"
-            style={{ fontSize: "0.75rem", padding: "6px 12px" }}
-            onClick={() => {
-              setNewMileageStr(String(carInfo.currentMileage || ""));
-              setIsMileageOpen(true);
-            }}
-          >
-            Update km
-          </button>
           <button
             className="primary-dark-btn"
             style={{ width: "auto", padding: "6px 12px", fontSize: "0.75rem" }}
@@ -260,33 +235,6 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
           </div>
         )}
       </div>
-
-      {/* Update Mileage Modal */}
-      {isMileageOpen && (
-        <div className="modal-overlay" onClick={() => setIsMileageOpen(false)}>
-          <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-drag-handle" />
-            <div className="sheet-header">
-              <button className="sheet-action-btn save" onClick={handleSaveMileage}>
-                Save
-              </button>
-              <h3>Update Odometer</h3>
-              <button className="sheet-action-btn cancel" onClick={() => setIsMileageOpen(false)}>
-                Cancel
-              </button>
-            </div>
-
-            <div className="form-field-card">
-              <div className="hero-eyebrow">CURRENT MILEAGE (KM)</div>
-              <input
-                type="number"
-                value={newMileageStr}
-                onChange={(e) => setNewMileageStr(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Add Maintenance Modal */}
       {isAddOpen && (

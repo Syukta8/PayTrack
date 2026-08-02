@@ -80,6 +80,18 @@ describe("Tracker", () => {
     expect(sheets.append).toHaveBeenCalledWith("appSettings", expect.objectContaining({ trackingCycleStartDay: 25 }));
   });
 
+  it("records completed service, advances mileage, and adds its optional expense", async () => {
+    const sheets = createSheets({
+      maintenance: [{ rowNumber: 3, data: { id: "oil", name: "Oil", notes: "", intervalMonths: 6, intervalKm: 0, lastServiceDate: "2026-01-01", lastServiceMileage: 1000, active: true } }],
+      carInfo: [{ rowNumber: 4, data: { id: "car", currentMileage: 1100, updatedAt: "" } }],
+    });
+    await new Tracker(sheets).markMaintenanceDone("oil", { date: "2026-08-02", mileage: 1200, cost: 80, description: "Oil and filter" });
+    expect(sheets.update).toHaveBeenCalledWith("maintenance", 3, expect.objectContaining({ lastServiceDate: "2026-08-02", lastServiceMileage: 1200 }));
+    expect(sheets.update).toHaveBeenCalledWith("carInfo", 4, expect.objectContaining({ currentMileage: 1200 }));
+    expect(sheets.append).toHaveBeenCalledWith("serviceHistory", expect.objectContaining({ description: "Oil and filter", mileage: 1200 }));
+    expect(sheets.append).toHaveBeenCalledWith("transactions", expect.objectContaining({ amount: 80, description: "Oil and filter" }));
+  });
+
   it("rejects invalid transactions before they reach the repository", async () => {
     const sheets = createSheets();
     await expect(new Tracker(sheets).addTransaction({ ...transaction, amount: -1 })).rejects.toThrow("non-negative");

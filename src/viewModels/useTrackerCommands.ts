@@ -41,7 +41,7 @@ export function useTrackerCommands(
   const setMileage = useCallback((mileage: number) => run((activeTracker) => activeTracker.setMileage(mileage)), [run]);
   const setTrackingCycleStartDay = useCallback((day: number) => run((activeTracker) => activeTracker.setTrackingCycleStartDay(day)), [run]);
   const addMaintenance = useCallback((input: Omit<MaintenanceItem, "id" | "active" | "lastServiceMileage">) => run((activeTracker) => activeTracker.addMaintenance(input)), [run]);
-  const markMaintenanceDone = useCallback((itemId: string, cost?: number) => run((activeTracker) => activeTracker.markMaintenanceDone(itemId, { cost })), [run]);
+  const markMaintenanceDone = useCallback((itemId: string, input?: { date?: string; mileage?: number; cost?: number; description?: string }) => run((activeTracker) => activeTracker.markMaintenanceDone(itemId, input)), [run]);
   const importReconciledItems = useCallback((items: ReconciledStatementItem[]) => run(async (activeTracker) => {
     for (const item of items) {
       await activeTracker.addTransaction({

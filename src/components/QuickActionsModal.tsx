@@ -4,6 +4,8 @@ interface QuickActionsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenAddTransaction: () => void;
+  onOpenMaintenanceService: () => void;
+  onOpenOdometer: () => void;
   onOpenScanReceipt: () => void;
   onOpenPasteSms: () => void;
   onOpenStatementReconcile: () => void;
@@ -13,6 +15,8 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
   isOpen,
   onClose,
   onOpenAddTransaction,
+  onOpenMaintenanceService,
+  onOpenOdometer,
   onOpenScanReceipt,
   onOpenPasteSms,
   onOpenStatementReconcile,
@@ -42,6 +46,18 @@ export const QuickActionsModal: React.FC<QuickActionsModalProps> = ({
             </div>
             <span className="tile-title">Add Transaction</span>
             <span className="tile-sub">Log income or expense</span>
+          </button>
+
+          <button className="action-tile" onClick={() => { onClose(); onOpenMaintenanceService(); }}>
+            <div className="tile-icon-box" style={{ backgroundColor: "rgba(20, 184, 166, 0.12)", color: "#0f766e" }}>🔧</div>
+            <span className="tile-title">Maintenance Service</span>
+            <span className="tile-sub">Log completed vehicle work</span>
+          </button>
+
+          <button className="action-tile" onClick={() => { onClose(); onOpenOdometer(); }}>
+            <div className="tile-icon-box" style={{ backgroundColor: "rgba(14, 116, 144, 0.12)", color: "#0e7490" }}>⏱</div>
+            <span className="tile-title">Update Odometer</span>
+            <span className="tile-sub">Save current vehicle mileage</span>
           </button>
 
           <button
